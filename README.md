@@ -40,7 +40,12 @@ project/
 ├── templates/               # Trang HTML cho web UI
 ├── main.py                  # CLI (streaming + spinner, resume, observability)
 ├── output/                  # Kết quả (report.md, verdict.json, cache, checkpoints)
-├── test_smoke.py            # Test offline (fake LLM, không cần API key)
+├── tests/                   # Test offline (fake LLM, không cần API key)
+│   ├── __init__.py
+│   ├── fakes.py             # FakeLLM dùng chung
+│   ├── test_agents.py       # Test từng agent node
+│   ├── test_graph.py        # Test logic routing (rewrite/finish)
+│   └── test_smoke.py        # Test tích hợp toàn luồng
 ├── requirements.txt
 └── .env.example
 ```
@@ -206,7 +211,9 @@ python -m evaluation.evaluate --json       # xuất JSON
 ## Kiểm thử nhanh (không cần API key)
 
 ```powershell
-python -m test_smoke
+python -m tests.test_smoke     # toàn luồng + vòng lặp sửa
+python -m tests.test_agents    # từng agent node
+python -m tests.test_graph     # logic routing
 ```
 
-Dùng fake LLM để chạy toàn bộ luồng node + kiểm tra vòng lặp sửa có dừng đúng không.
+Dùng fake LLM để chạy các node và kiểm tra vòng lặp sửa có dừng đúng không.
