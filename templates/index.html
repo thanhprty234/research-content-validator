@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research & Content Validator</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --err: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+    header { margin-bottom: 24px; }
+    header h1 { font-size: 1.5rem; color: var(--accent); }
+    header p { color: var(--muted); margin-top: 4px; font-size: .9rem; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    label { display: block; font-size: .85rem; color: var(--muted); margin: 12px 0 6px; }
+    input[type=text], select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: .95rem;
+    }
+    input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 140px; }
+
+    button {
+      margin-top: 18px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: opacity .15s;
+    }
+    button:hover { opacity: .9; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ---- spinner ---- */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- progress ---- */
+    #progress { display: none; }
+    #progress.active { display: block; }
+    .step {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; margin-bottom: 8px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); opacity: .45;
+    }
+    .step .spinner { display: none; }
+    .step.running { opacity: 1; border-color: var(--accent); }
+    .step.running .spinner { display: inline-block; }
+    .step.done { opacity: 1; }
+    .step.done .icon { color: var(--ok); }
+    .step.error .icon { color: var(--err); }
+    .step .icon { width: 20px; text-align: center; color: var(--muted); font-weight: 700; }
+    .step .msg { flex: 1; font-size: .9rem; }
+
+    /* ---- result ---- */
+    #result { display: none; }
+    #result.active { display: block; }
+    .verdict-line { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .badge {
+      padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: .85rem;
+    }
+    .badge.approved { background: rgba(52,211,153,.15); color: var(--ok); }
+    .badge.revise { background: rgba(251,191,36,.15); color: var(--warn); }
+    .badge.error { background: rgba(248,113,113,.15); color: var(--err); }
+    .score { color: var(--muted); font-size: .9rem; }
+    pre, .report-body {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; font-size: .85rem;
+      white-space: pre-wrap; word-wrap: break-word; line-height: 1.5;
+      max-height: 420px; overflow: auto;
+    }
+    h3 { font-size: .95rem; margin: 16px 0 8px; color: var(--accent); }
+    .dims table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    .dims th, .dims td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .error-box { color: var(--err); white-space: pre-wrap; }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: var(--err); color: #fff; padding: 10px 18px; border-radius: 8px;
+      display: none; z-index: 10; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Research & Content Validator</h1>
+      <p>Planner → Researcher → Writer → Critic — tự động nghiên cứu, viết và phê duyệt báo cáo.</p>
+    </header>
+
+    <form id="run-form" class="card">
+      <label for="topic">Chủ đề nghiên cứu</label>
+      <input type="text" id="topic" name="topic" required
+             placeholder="VD: Lợi ích và rủi ro của việc nhịn ăn gián đoạn">
+
+      <div class="row">
+        <div>
+          <label for="provider">Provider</label>
+          <select id="provider" name="provider"></select>
+        </div>
+        <div>
+          <label for="model">Model (để trống = mặc định)</label>
+          <input type="text" id="model" name="model" placeholder="VD: gpt-4o-mini">
+        </div>
+        <div>
+          <label for="max_revisions">Số vòng sửa tối đa</label>
+          <input type="text" id="max_revisions" name="max_revisions" value="3">
+        </div>
+      </div>
+
+      <button type="submit" id="run-btn">Chạy workflow</button>
+    </form>
+
+    <div id="progress" class="card">
+      <h3>Tiến trình</h3>
+      <div class="step" data-step="start"><span class="icon">•</span><span class="spinner"></span><span class="msg">Bắt đầu</span></div>
+      <div class="step" data-step="planner"><span class="icon">•</span><span class="spinner"></span><span class="msg">Planner — lập kế hoạch nghiên cứu</span></div>
+      <div class="step" data-step="researcher"><span class="icon">•</span><span class="spinner"></span><span class="msg">Researcher — tìm kiếm &amp; gom dữ liệu</span></div>
+      <div class="step" data-step="writer"><span class="icon">•</span><span class="spinner"></span><span class="msg">Writer — viết báo cáo</span></div>
+      <div class="step" data-step="critic"><span class="icon">•</span><span class="spinner"></span><span class="msg">Critic — phê duyệt &amp; đánh giá</span></div>
+    </div>
+
+    <div id="result" class="card">
+      <div class="verdict-line">
+        <span class="badge" id="verdict-badge">…</span>
+        <span class="score" id="verdict-score"></span>
+      </div>
+      <h3>Báo cáo</h3>
+      <pre id="report-body"></pre>
+      <div class="dims" id="dims"></div>
+      <h3>Issues</h3>
+      <div id="issues"></div>
+    </div>
+
+    <div id="toast"></div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // load providers into the select
+    fetch('/providers')
+      .then(r => r.json())
+      .then(list => {
+        const sel = $('provider');
+        list.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p; opt.textContent = p;
+          sel.appendChild(opt);
+        });
+        // default to openrouter (matches typical .env) if present
+        if (list.includes('openrouter')) sel.value = 'openrouter';
+      });
+
+    function toast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 5000);
+    }
+
+    function setStepState(step, state) {
+      const el = document.querySelector(`.step[data-step="${step}"]`);
+      if (!el) return;
+      el.classList.remove('running', 'done', 'error');
+      el.classList.add(state);
+      el.querySelector('.icon').textContent = state === 'done' ? '✔'
+        : state === 'error' ? '✖' : '•';
+    }
+
+    function resetProgress() {
+      document.querySelectorAll('.step').forEach(s => {
+        s.classList.remove('running', 'done', 'error');
+        s.querySelector('.icon').textContent = '•';
+      });
+    }
+
+    function renderResult(data) {
+      const c = data.critique || {};
+      const verdict = (c.verdict || 'UNKNOWN').toLowerCase();
+      const badge = $('verdict-badge');
+      badge.textContent = (c.verdict || 'UNKNOWN').toUpperCase();
+      badge.className = 'badge ' + (verdict === 'approved' ? 'approved' : verdict === 'revise' ? 'revise' : 'error');
+      $('verdict-score').textContent =
+        `Overall: ${c.overall_score ?? 'N/A'}/100  ·  Revisions: ${data.revision_count ?? 0}`;
+      $('report-body').textContent = data.body || '(rỗng)';
+
+      const dims = c.dimensions || {};
+      const rows = Object.entries(dims).map(([k, d]) =>
+        `<tr><td>${k}</td><td>${d && d.score !== undefined ? d.score : 'N/A'}</td><td>${d && d.notes ? d.notes : ''}</td></tr>`
+      ).join('');
+      $('dims').innerHTML = rows ? '<table><tr><th>Dimension</th><th>Score</th><th>Notes</th></tr>' + rows + '</table>' : '';
+
+      const issues = c.issues || [];
+      $('issues').innerHTML = issues.length
+        ? '<ul>' + issues.map(i => `<li>${i}</li>`).join('') + '</ul>'
+        : '<span style="color:var(--ok)">Không có vấn đề nào.</span>';
+
+      $('result').classList.add('active');
+    }
+
+    $('run-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const topic = $('topic').value.trim();
+      if (!topic) { toast('Nhập chủ đề trước'); return; }
+
+      const params = new URLSearchParams({
+        topic,
+        provider: $('provider').value,
+        model: $('model').value,
+        max_revisions: $('max_revisions').value || '3',
+        thread_id: 'web-' + Date.now(),
+      });
+
+      // reset UI
+      $('result').classList.remove('active');
+      resetProgress();
+      $('progress').classList.add('active');
+      $('run-btn').disabled = true;
+      $('run-btn').textContent = 'Đang chạy…';
+      setStepState('start', 'running');
+
+      const es = new EventSource('/stream?' + params.toString());
+
+      es.addEventListener('update', (ev) => {
+        const data = JSON.parse(ev.data);
+        if (data.type === 'step') {
+          setStepState(data.step, 'done');
+          // advance the spinner to the next step
+          const order = ['start', 'planner', 'researcher', 'writer', 'critic'];
+          const idx = order.indexOf(data.step);
+          if (idx >= 0 && idx + 1 < order.length) {
+            setStepState(order[idx + 1], 'running');
+          }
+        } else if (data.type === 'progress') {
+          const active = document.querySelector('.step.running .msg');
+          if (active) active.textContent = data.message;
+        }
+      });
+
+      es.addEventListener('result', (ev) => {
+        const data = JSON.parse(ev.data);
+        const result = data.result;
+        setStepState('critic', 'done');
+        renderResult(result);
+        es.close();
+        $('run-btn').disabled = false;
+        $('run-btn').textContent = 'Chạy workflow';
+      });
+
+      es.addEventListener('error', (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.type === 'error') {
+            toast('Lỗi: ' + data.message);
+            setStepState('start', 'error');
+          }
+        } catch (_) { /* SSE network error event */ }
+        if (ev.readyState === EventSource.CLOSED) {
+          $('run-btn').disabled = false;
+          $('run-btn').textContent = 'Chạy workflow';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
