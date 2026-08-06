@@ -35,6 +35,13 @@ def print_verdict(state: dict):
     for issue in critique.get("issues", []):
         _safe_write(f"  - {issue}\n")
 
+    best = state.get("best_report") or {}
+    if critique.get("verdict") != "APPROVED" and best and (best.get("score") or 0) > (critique.get("overall_score") or 0):
+        _safe_write(
+            f"[held] Revisions ran out below threshold; best round {best.get('revision')} "
+            f"({best.get('score')}/100) will be saved.\n"
+        )
+
     try:
         from rich.console import Console
         from rich.table import Table

@@ -35,7 +35,12 @@ def _tune_env(args):
 
 
 def _run_job(args: dict):
-    """Run the workflow and push events onto the job queue."""
+    """Run the workflow and push events onto the job queue.
+
+    When the critic still returns REVISE after MAX_REVISIONS, the job emits a
+    ``paused`` event (with the best report) so the UI can offer to add more
+    revision rounds or keep the best report.
+    """
     cfg = model_config_from_env()
     if args.get("provider"):
         cfg.provider = args["provider"]
@@ -60,7 +65,23 @@ def _run_job(args: dict):
             on_step=on_step,
             on_error=on_error,
         )
-        job["queue"].put({"type": "done", "result": _public_result(args["topic"], state)})
+        job["state"] = state
+        critique = state.get("critique") or {}
+        verdict = critique.get("verdict", "UNKNOWN")
+        max_rev = int(os.getenv("MAX_REVISIONS", "3"))
+        revision_count = state.get("revision_count", 0)
+        if verdict == "REVISE" and revision_count >= max_rev:
+            job["paused"] = True
+            job["queue"].put({
+                "type": "paused",
+                "result": _public_result(args["topic"], state),
+                "thread_id": args["thread_id"],
+                "max_revisions": max_rev,
+                "revision_count": revision_count,
+            })
+        else:
+            job["paused"] = False
+            job["queue"].put({"type": "done", "result": _public_result(args["topic"], state)})
     except Exception as exc:  # belt-and-braces for errors raised outside the stream
         job["queue"].put({"type": "error", "message": str(exc)})
     finally:
@@ -79,6 +100,8 @@ def _public_result(topic: str, state: dict) -> dict:
         "citations": state.get("citations", []),
         "critique": critique,
         "revision_count": state.get("revision_count", 0),
+        "best_report": state.get("best_report"),
+        "best_critique": state.get("best_critique"),
     }
 
 
@@ -106,7 +129,7 @@ def event_stream():
 
     job = _JOBS.get(thread_id)
     if not job or job["done"]:
-        job = {"queue": queue.Queue(), "done": False, "result": None}
+        job = {"queue": queue.Queue(), "done": False, "result": None, "args": args}
         _JOBS[thread_id] = job
         import threading
         threading.Thread(target=_run_job, args=(args,), daemon=True).start()
@@ -127,6 +150,9 @@ def event_stream():
                 yield f"event: error\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
                 yield "event: close\ndata: {}\n\n"
                 break
+            if event["type"] == "paused":
+                yield f"event: paused\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+                continue
             yield f"event: update\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
 
     return Response(generate(), mimetype="text/event-stream", headers={
@@ -135,10 +161,64 @@ def event_stream():
     })
 
 
+@app.route("/continue", methods=["POST"])
+def continue_job():
+    """Add more revision rounds to a paused job and re-run the workflow."""
+    data = request.get_json(silent=True) or request.form
+    thread_id = data.get("thread_id") or "web-ui"
+    job = _JOBS.get(thread_id)
+    if not job:
+        return json.dumps({"error": "no such job"}), 404
+
+    try:
+        extra = int(data.get("add_rounds") or 0)
+    except ValueError:
+        extra = 0
+    if extra <= 0:
+        return json.dumps({"error": "add_rounds must be > 0"}), 400
+
+    max_rev = int(os.getenv("MAX_REVISIONS", "3"))
+    prev = job.get("args") or {}
+    args = {
+        "topic": prev.get("topic") or data.get("topic", ""),
+        "provider": prev.get("provider") or data.get("provider"),
+        "model": prev.get("model") or data.get("model"),
+        "max_revisions": max_rev + extra,
+        "thread_id": thread_id,
+    }
+    _tune_env(args)
+    job["args"] = args
+
+    job["done"] = False
+    job["paused"] = False
+    import threading
+    threading.Thread(target=_run_job, args=(args,), daemon=True).start()
+    return json.dumps({"ok": True, "max_revisions": args["max_revisions"]})
+
+
+@app.route("/finalize", methods=["GET"])
+def finalize():
+    """Persist the best report for a paused job and close its stream."""
+    thread_id = request.args.get("thread_id") or "web-ui"
+    job = _JOBS.get(thread_id)
+    if not job or not job.get("state"):
+        return json.dumps({"error": "no such job"}), 404
+
+    from output import write_outputs
+    out_dir = write_outputs(job["state"])
+    job["paused"] = False
+    job["done"] = True
+    job["queue"].put({"type": "done", "result": _public_result(request.args.get("topic", ""), job["state"]), "saved": str(out_dir)})
+    return json.dumps({"ok": True, "saved": str(out_dir)})
+
+
 @app.route("/providers")
 def providers():
     from models.llm import PROVIDER_ALIASES
-    return json.dumps(sorted(PROVIDER_ALIASES))
+    return json.dumps({
+        "list": sorted(PROVIDER_ALIASES),
+        "default": os.getenv("MODEL_PROVIDER", "openai"),
+    })
 
 
 if __name__ == "__main__":

@@ -37,6 +37,20 @@ def critic_node(state: WorkflowState, llm=None) -> dict:
     if critique.overall_score >= threshold:
         critique.verdict = "APPROVED"
 
+    # Keep the best report/verdict seen so far so a later, worse revision
+    # cannot overwrite the best result when revisions run out before approval.
+    best_report = state.get("best_report") or {}
+    best_score = best_report.get("score", -1.0)
+    if critique.overall_score > best_score:
+        best_report = {
+            "score": critique.overall_score,
+            "revision": state.get("revision_count", 0),
+            **report,
+        }
+        best_critique = critique.model_dump()
+    else:
+        best_critique = state.get("best_critique") or critique.model_dump()
+
     return {
         "critique": critique.model_dump(),
         "critic_feedback": [
@@ -45,6 +59,8 @@ def critic_node(state: WorkflowState, llm=None) -> dict:
         ],
         "revision_count": state.get("revision_count", 0),
         "final_report": report if critique.verdict == "APPROVED" else None,
+        "best_report": best_report,
+        "best_critique": best_critique,
     }
 
 

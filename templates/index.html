@@ -6,124 +6,283 @@
   <title>Research & Content Validator</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --panel: #1e293b;
-      --border: #334155;
+      --bg: #0b1220;
+      --bg-2: #0f1a2e;
+      --panel: #141f33;
+      --panel-2: #182640;
+      --border: #26364f;
       --text: #e2e8f0;
       --muted: #94a3b8;
       --accent: #38bdf8;
+      --accent-2: #818cf8;
       --ok: #34d399;
       --warn: #fbbf24;
       --err: #f87171;
+      --grad: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      --radius: 14px;
+      --shadow: 0 8px 24px rgba(0, 0, 0, .35);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(56,189,248,.12), transparent 60%),
+        radial-gradient(900px 500px at 110% 10%, rgba(129,140,248,.10), transparent 55%),
+        var(--bg);
       color: var(--text);
       min-height: 100vh;
     }
-    .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
-    header { margin-bottom: 24px; }
-    header h1 { font-size: 1.5rem; color: var(--accent); }
-    header p { color: var(--muted); margin-top: 4px; font-size: .9rem; }
+    .container { max-width: 900px; margin: 0 auto; padding: 32px 18px 80px; }
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
+    /* ---- header ---- */
+    header { text-align: center; margin-bottom: 28px; }
+    .logo {
+      display: inline-flex; align-items: center; gap: 12px;
+      font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em;
+      background: var(--grad);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
     }
-    label { display: block; font-size: .85rem; color: var(--muted); margin: 12px 0 6px; }
+    .logo .emoji { font-size: 1.7rem; }
+    .pipeline {
+      display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin-top: 10px; padding: 6px 14px;
+      background: rgba(56,189,248,.08); border: 1px solid var(--border);
+      border-radius: 999px; font-size: .78rem; color: var(--muted);
+      font-weight: 600; letter-spacing: .04em;
+    }
+    .pipeline .sep { color: var(--border); }
+    .pipeline b { color: var(--accent); font-weight: 700; }
+
+    /* ---- cards ---- */
+    .card {
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    label { display: block; font-size: .82rem; color: var(--muted); margin: 14px 0 6px; font-weight: 600; letter-spacing: .02em; }
     input[type=text], select {
       width: 100%;
-      padding: 10px 12px;
-      border-radius: 8px;
+      padding: 11px 13px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      background: var(--bg);
+      background: rgba(11,18,32,.6);
       color: var(--text);
       font-size: .95rem;
+      transition: border-color .15s, box-shadow .15s;
     }
-    input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; }
-    .row > div { flex: 1; min-width: 140px; }
+    input::placeholder { color: #475569; }
+    input:focus, select:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56,189,248,.18);
+    }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; }
+    .row > div { flex: 1; min-width: 150px; }
 
     button {
-      margin-top: 18px;
-      padding: 12px 20px;
+      margin-top: 20px;
+      padding: 13px 20px;
       border: none;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #0f172a;
-      font-weight: 600;
+      border-radius: 10px;
+      background: var(--grad);
+      color: #0b1220;
+      font-weight: 800;
       font-size: 1rem;
+      letter-spacing: .02em;
       cursor: pointer;
       width: 100%;
-      transition: opacity .15s;
+      transition: transform .12s, opacity .12s, box-shadow .12s;
+      box-shadow: 0 6px 18px rgba(56,189,248,.25);
     }
-    button:hover { opacity: .9; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
+    button:hover { transform: translateY(-1px); opacity: .94; box-shadow: 0 10px 24px rgba(56,189,248,.35); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-ghost {
+      margin-top: 0; padding: 9px 16px; width: auto;
+      background: transparent; color: var(--accent);
+      border: 1px solid var(--border); box-shadow: none;
+      font-weight: 600; font-size: .85rem;
+    }
+    .btn-ghost:hover { border-color: var(--accent); box-shadow: none; }
 
     /* ---- spinner ---- */
     .spinner {
-      width: 18px; height: 18px;
-      border: 3px solid var(--border);
+      width: 16px; height: 16px; flex: none;
+      border: 2.5px solid rgba(255,255,255,.15);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ---- progress ---- */
+    /* ---- progress timeline ---- */
     #progress { display: none; }
-    #progress.active { display: block; }
-    .step {
-      display: flex; align-items: center; gap: 12px;
-      padding: 10px 12px; margin-bottom: 8px;
-      border: 1px solid var(--border); border-radius: 8px;
-      background: var(--bg); opacity: .45;
+    #progress.active { display: block; animation: fadeUp .35s ease; }
+    #progress h3 { font-size: .95rem; margin-bottom: 16px; }
+    .timeline { position: relative; padding-left: 38px; }
+    .timeline::before {
+      content: ""; position: absolute; left: 17px; top: 12px; bottom: 12px;
+      width: 2px; background: var(--border); border-radius: 2px;
     }
+    .step {
+      position: relative; display: flex; align-items: center; gap: 12px;
+      padding: 11px 12px; margin-bottom: 8px;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: rgba(11,18,32,.5);
+      opacity: .4; transition: opacity .3s, border-color .3s, background .3s;
+    }
+    .step .dot {
+      position: absolute; left: -38px; top: 50%; transform: translateY(-50%);
+      width: 22px; height: 22px; flex: none; border-radius: 50%;
+      background: var(--bg-2); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; color: var(--muted); font-weight: 700;
+      transition: background .3s, border-color .3s, color .3s;
+    }
+    .step .icon { width: 20px; text-align: center; color: var(--muted); font-weight: 700; flex: none; }
+    .step .msg { flex: 1; font-size: .9rem; font-weight: 500; }
     .step .spinner { display: none; }
-    .step.running { opacity: 1; border-color: var(--accent); }
-    .step.running .spinner { display: inline-block; }
-    .step.done { opacity: 1; }
+
+    .step.running {
+      opacity: 1; border-color: var(--accent);
+      background: rgba(56,189,248,.07);
+      box-shadow: 0 0 18px rgba(56,189,248,.12);
+    }
+    .step.running .spinner { display: inline-block; animation-duration: .7s; }
+    .step.running .dot { border-color: var(--accent); background: rgba(56,189,248,.15); }
+    .step.done { opacity: 1; border-color: rgba(52,211,153,.4); }
     .step.done .icon { color: var(--ok); }
+    .step.done .dot { background: var(--ok); border-color: var(--ok); color: #0b1220; }
+    .step.error { opacity: 1; border-color: var(--err); background: rgba(248,113,113,.07); }
     .step.error .icon { color: var(--err); }
-    .step .icon { width: 20px; text-align: center; color: var(--muted); font-weight: 700; }
-    .step .msg { flex: 1; font-size: .9rem; }
+    .step.error .dot { background: var(--err); border-color: var(--err); color: #0b1220; }
 
     /* ---- result ---- */
     #result { display: none; }
-    #result.active { display: block; }
-    .verdict-line { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    #result.active { display: block; animation: fadeUp .4s ease; }
+    #result h3 { font-size: .92rem; margin: 22px 0 10px; letter-spacing: .03em; }
+    .result-head {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding-bottom: 18px; border-bottom: 1px solid var(--border); margin-bottom: 6px;
+    }
     .badge {
-      padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: .85rem;
+      padding: 6px 16px; border-radius: 999px; font-weight: 800; font-size: .95rem;
+      letter-spacing: .05em;
     }
-    .badge.approved { background: rgba(52,211,153,.15); color: var(--ok); }
-    .badge.revise { background: rgba(251,191,36,.15); color: var(--warn); }
+    .badge.approved { background: rgba(52,211,153,.16); color: var(--ok); box-shadow: 0 0 14px rgba(52,211,153,.25); }
+    .badge.revise { background: rgba(251,191,36,.14); color: var(--warn); box-shadow: 0 0 14px rgba(251,191,36,.2); }
     .badge.error { background: rgba(248,113,113,.15); color: var(--err); }
-    .score { color: var(--muted); font-size: .9rem; }
-    pre, .report-body {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 14px; font-size: .85rem;
-      white-space: pre-wrap; word-wrap: break-word; line-height: 1.5;
-      max-height: 420px; overflow: auto;
+    .score-big {
+      display: flex; align-items: baseline; gap: 6px; margin-left: auto;
+      font-size: 2rem; font-weight: 800;
+      background: var(--grad);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
     }
-    h3 { font-size: .95rem; margin: 16px 0 8px; color: var(--accent); }
+    .score-big small { font-size: .9rem; opacity: .7; font-weight: 600; }
+    .meta-line { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+    .verdict-note { color: var(--muted); font-size: .88rem; padding: 12px 14px; margin-top: 10px;
+      background: rgba(11,18,32,.5); border: 1px solid var(--border); border-radius: 10px; }
+
+    .report-title { font-size: 1.25rem; font-weight: 700; margin-top: 18px; line-height: 1.3; }
+    .report-summary { color: var(--muted); font-size: .95rem; line-height: 1.6; margin-top: 8px; }
+    .report-body {
+      background: rgba(11,18,32,.5); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 20px;
+      font-size: .9rem; line-height: 1.7;
+      max-height: 480px; overflow: auto;
+    }
+    .report-body h1, .report-body h2, .report-body h3 {
+      color: var(--accent); margin: 14px 0 8px; line-height: 1.3;
+    }
+    .report-body h1 { font-size: 1.25rem; }
+    .report-body h2 { font-size: 1.1rem; }
+    .report-body h3 { font-size: 1rem; }
+    .report-body p { margin: 8px 0; }
+    .report-body ul, .report-body ol { margin: 8px 0 8px 20px; }
+    .report-body li { margin: 4px 0; }
+    .report-body code {
+      background: rgba(56,189,248,.12); border-radius: 5px;
+      padding: 2px 6px; font-size: .85em;
+    }
+    .report-body a { color: var(--accent); text-decoration: none; }
+    .report-body a:hover { text-decoration: underline; }
+    .report-body strong { color: #f8fafc; }
+
+    .claims { display: flex; flex-wrap: wrap; gap: 8px; }
+    .claim-tag {
+      background: rgba(129,140,248,.1); border: 1px solid rgba(129,140,248,.3);
+      color: #c7d2fe; border-radius: 999px; padding: 5px 12px; font-size: .82rem;
+    }
+
+    .citations { list-style: none; }
+    .citations li {
+      padding: 8px 12px; margin-bottom: 8px;
+      background: rgba(11,18,32,.5); border: 1px solid var(--border); border-radius: 8px;
+      font-size: .85rem;
+    }
+    .citations a { color: var(--accent); text-decoration: none; word-break: break-all; }
+    .citations a:hover { text-decoration: underline; }
+    .citations .claim { color: var(--muted); display: block; margin-top: 3px; }
+
     .dims table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    .dims th, .dims td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .dims th, .dims td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .dims th { color: var(--muted); font-size: .8rem; letter-spacing: .03em; }
+    .dims td:first-child { font-weight: 600; }
+    .bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; min-width: 120px; }
+    .bar > span { display: block; height: 100%; border-radius: 999px; background: var(--grad); transition: width .6s ease; }
+
+    .issues ul, .revs ul { margin-left: 18px; font-size: .9rem; }
+    .issues li { color: var(--err); margin: 5px 0; }
+    .revs li { color: var(--warn); margin: 5px 0; }
+    .empty-ok { color: var(--ok); font-size: .9rem; }
     .error-box { color: var(--err); white-space: pre-wrap; }
-    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      background: var(--err); color: #fff; padding: 10px 18px; border-radius: 8px;
-      display: none; z-index: 10; font-size: .9rem; }
+
+    /* ---- pause (revisions out) ---- */
+    #pause { display: none; }
+    #pause.active { display: block; animation: fadeUp .35s ease; border-left: 4px solid var(--warn); }
+    #pause h3 { color: var(--warn); }
+    .pause-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+    .pause-actions input[type=number] {
+      width: 90px; padding: 9px 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: rgba(11,18,32,.6);
+      color: var(--text); font-size: .95rem;
+    }
+    .pause-actions .btn-ghost { margin-top: 0; }
+
+    /* ---- toast ---- */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px);
+      background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 10px;
+      display: none; z-index: 10; font-size: .88rem; box-shadow: var(--shadow);
+      max-width: 90vw; opacity: 0; transition: opacity .25s, transform .25s;
+      border-left: 4px solid var(--err);
+    }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+    #toast.ok { border-left-color: var(--ok); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 560px) {
+      .score-big { margin-left: 0; }
+      .container { padding: 20px 12px 60px; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Research & Content Validator</h1>
-      <p>Planner → Researcher → Writer → Critic — tự động nghiên cứu, viết và phê duyệt báo cáo.</p>
+      <div class="logo"><span class="emoji">🧠</span>Research &amp; Content Validator</div>
+      <div class="pipeline">
+        <b>Planner</b><span class="sep">→</span>
+        <b>Researcher</b><span class="sep">→</span>
+        <b>Writer</b><span class="sep">→</span>
+        <b>Critic</b>
+        <span style="color:var(--muted);font-weight:400">· tự động nghiên cứu, viết &amp; phê duyệt</span>
+      </div>
     </header>
 
     <form id="run-form" class="card">
@@ -137,7 +296,7 @@
           <select id="provider" name="provider"></select>
         </div>
         <div>
-          <label for="model">Model (để trống = mặc định)</label>
+          <label for="model">Model (để trống = theo .env)</label>
           <input type="text" id="model" name="model" placeholder="VD: gpt-4o-mini">
         </div>
         <div>
@@ -146,28 +305,62 @@
         </div>
       </div>
 
-      <button type="submit" id="run-btn">Chạy workflow</button>
+      <button type="submit" id="run-btn">🚀 Chạy workflow</button>
     </form>
 
     <div id="progress" class="card">
       <h3>Tiến trình</h3>
-      <div class="step" data-step="start"><span class="icon">•</span><span class="spinner"></span><span class="msg">Bắt đầu</span></div>
-      <div class="step" data-step="planner"><span class="icon">•</span><span class="spinner"></span><span class="msg">Planner — lập kế hoạch nghiên cứu</span></div>
-      <div class="step" data-step="researcher"><span class="icon">•</span><span class="spinner"></span><span class="msg">Researcher — tìm kiếm &amp; gom dữ liệu</span></div>
-      <div class="step" data-step="writer"><span class="icon">•</span><span class="spinner"></span><span class="msg">Writer — viết báo cáo</span></div>
-      <div class="step" data-step="critic"><span class="icon">•</span><span class="spinner"></span><span class="msg">Critic — phê duyệt &amp; đánh giá</span></div>
+      <div class="timeline">
+        <div class="step" data-step="start"><span class="dot">1</span><span class="icon">•</span><span class="spinner"></span><span class="msg">Bắt đầu</span></div>
+        <div class="step" data-step="planner"><span class="dot">2</span><span class="icon">•</span><span class="spinner"></span><span class="msg">Planner — lập kế hoạch nghiên cứu</span></div>
+        <div class="step" data-step="researcher"><span class="dot">3</span><span class="icon">•</span><span class="spinner"></span><span class="msg">Researcher — tìm kiếm &amp; gom dữ liệu</span></div>
+        <div class="step" data-step="writer"><span class="dot">4</span><span class="icon">•</span><span class="spinner"></span><span class="msg">Writer — viết báo cáo</span></div>
+        <div class="step" data-step="critic"><span class="dot">5</span><span class="icon">•</span><span class="spinner"></span><span class="msg">Critic — phê duyệt &amp; đánh giá</span></div>
+      </div>
+    </div>
+
+    <div id="pause" class="card">
+      <h3>⚠️ Hết vòng sửa nhưng chưa đạt ngưỡng</h3>
+      <p class="meta-line" id="pause-info"></p>
+      <div class="pause-actions">
+        <input type="number" id="add-rounds" min="1" value="1" title="Số vòng thêm">
+        <button type="button" class="btn-ghost" id="add-rounds-btn">➕ Thêm vòng &amp; chạy tiếp</button>
+        <button type="button" class="btn-ghost" id="keep-best-btn">💾 Giữ bản tốt nhất</button>
+      </div>
     </div>
 
     <div id="result" class="card">
-      <div class="verdict-line">
+      <div class="result-head">
         <span class="badge" id="verdict-badge">…</span>
-        <span class="score" id="verdict-score"></span>
+        <span class="score-big" id="verdict-score">–<small>/100</small></span>
       </div>
-      <h3>Báo cáo</h3>
-      <pre id="report-body"></pre>
+      <div class="meta-line" id="meta-line"></div>
+      <div id="verdict-note"></div>
+
+      <div class="report-title" id="report-title"></div>
+      <div class="report-summary" id="report-summary"></div>
+
+      <h3>📄 Báo cáo</h3>
+      <div class="report-body" id="report-body"></div>
+
+      <h3>🔑 Key claims</h3>
+      <div class="claims" id="claims"></div>
+
+      <h3>🔗 Citations</h3>
+      <ul class="citations" id="citations"></ul>
+
+      <h3>📊 Điểm đánh giá</h3>
       <div class="dims" id="dims"></div>
-      <h3>Issues</h3>
-      <div id="issues"></div>
+
+      <h3>⚠️ Issues</h3>
+      <div class="issues" id="issues"></div>
+
+      <h3>💡 Đề xuất sửa</h3>
+      <div class="revs" id="revs"></div>
+
+      <div style="text-align:right; margin-top:16px;">
+        <button type="button" class="btn-ghost" id="copy-btn">📋 Copy báo cáo</button>
+      </div>
     </div>
 
     <div id="toast"></div>
@@ -176,32 +369,90 @@
   <script>
     const $ = (id) => document.getElementById(id);
 
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function renderMarkdown(src) {
+      let text = esc(src);
+      // code spans first
+      text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+      // links [t](u) — safe url
+      text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      // bare urls
+      text = text.replace(/(^|\s)(https?:\/\/[^\s<>]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+      // bold
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      // italic
+      text = text.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
+      // headers
+      text = text.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+      text = text.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+      text = text.replace(/^# (.*)$/gm, '<h1>$1</h1>');
+      // unordered lists
+      const ulBlock = text.split(/(?=\n)/).reduce((acc, line) => {
+        if (/^\s*[-*] /.test(line)) {
+          if (!acc.buf) acc.buf = '<ul>';
+          acc.buf += '<li>' + line.replace(/^\s*[-*] /, '') + '</li>';
+        } else {
+          if (acc.buf) { acc.out += acc.buf + '</ul>'; acc.buf = null; }
+          acc.out += line;
+        }
+        return acc;
+      }, { out: '', buf: null });
+      text = ulBlock.buf ? ulBlock.out + ulBlock.buf + '</ul>' : ulBlock.out;
+      // ordered lists
+      const olBlock = text.split(/(?=\n)/).reduce((acc, line) => {
+        if (/^\s*\d+[.)] /.test(line)) {
+          if (!acc.buf) acc.buf = '<ol>';
+          acc.buf += '<li>' + line.replace(/^\s*\d+[.)] /, '') + '</li>';
+        } else {
+          if (acc.buf) { acc.out += acc.buf + '</ol>'; acc.buf = null; }
+          acc.out += line;
+        }
+        return acc;
+      }, { out: '', buf: null });
+      text = olBlock.buf ? olBlock.out + olBlock.buf + '</ol>' : olBlock.out;
+      // paragraphs
+      text = text.replace(/\n{2,}/g, '</p><p>');
+      text = text.replace(/^\s*<h/g, '<p><h');
+      text = '<p>' + text + '</p>';
+      text = text.replace(/<p><\/p>/g, '');
+      return text;
+    }
+
+    function showToast(msg, type) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.className = type === 'ok' ? 'show ok' : 'show';
+      setTimeout(() => { t.className = ''; }, 5000);
+    }
+
     // load providers into the select
     fetch('/providers')
       .then(r => r.json())
-      .then(list => {
+      .then(data => {
         const sel = $('provider');
-        list.forEach(p => {
+        (data.list || []).forEach(p => {
           const opt = document.createElement('option');
           opt.value = p; opt.textContent = p;
           sel.appendChild(opt);
         });
-        // default to openrouter (matches typical .env) if present
-        if (list.includes('openrouter')) sel.value = 'openrouter';
+        const preferred = data.default || 'openrouter';
+        if ((data.list || []).includes(preferred)) sel.value = preferred;
+        else if (data.list && data.list.includes('openrouter')) sel.value = 'openrouter';
       });
-
-    function toast(msg) {
-      const t = $('toast');
-      t.textContent = msg;
-      t.style.display = 'block';
-      setTimeout(() => t.style.display = 'none', 5000);
-    }
 
     function setStepState(step, state) {
       const el = document.querySelector(`.step[data-step="${step}"]`);
       if (!el) return;
       el.classList.remove('running', 'done', 'error');
       el.classList.add(state);
+      const dot = el.querySelector('.dot');
+      if (dot) dot.textContent = state === 'done' ? '✓' : state === 'error' ? '✕' : dot.dataset.num || dot.textContent;
       el.querySelector('.icon').textContent = state === 'done' ? '✔'
         : state === 'error' ? '✖' : '•';
     }
@@ -219,52 +470,172 @@
       const badge = $('verdict-badge');
       badge.textContent = (c.verdict || 'UNKNOWN').toUpperCase();
       badge.className = 'badge ' + (verdict === 'approved' ? 'approved' : verdict === 'revise' ? 'revise' : 'error');
-      $('verdict-score').textContent =
-        `Overall: ${c.overall_score ?? 'N/A'}/100  ·  Revisions: ${data.revision_count ?? 0}`;
-      $('report-body').textContent = data.body || '(rỗng)';
 
+      const score = c.overall_score;
+      $('verdict-score').innerHTML = (score != null ? score : 'N/A') + '<small>/100</small>';
+      $('meta-line').textContent = `Revisions: ${data.revision_count ?? 0}`;
+
+      const note = $('verdict-note');
+      note.className = 'verdict-note';
+      note.textContent = c.overall_notes || '';
+
+      $('report-title').textContent = data.title || '';
+      $('report-title').style.display = data.title ? 'block' : 'none';
+      $('report-summary').textContent = data.summary || '';
+      $('report-summary').style.display = data.summary ? 'block' : 'none';
+      $('report-body').innerHTML = renderMarkdown(data.body || '(rỗng)');
+
+      // key claims
+      const claims = data.key_claims || [];
+      $('claims').innerHTML = claims.length
+        ? claims.map(k => `<span class="claim-tag">${esc(k)}</span>`).join('')
+        : '<span class="empty-ok">Không có.</span>';
+
+      // citations
+      const cites = data.citations || [];
+      $('citations').innerHTML = cites.length
+        ? cites.map(ci => {
+            const url = ci && ci.source ? ci.source : '';
+            const safeUrl = /^https?:\/\//i.test(url) ? url : '#';
+            const claim = ci && ci.claim_supported ? esc(ci.claim_supported) : '';
+            const link = safeUrl === '#' ? esc(url || 'n/a')
+              : `<a href="${esc(safeUrl)}" target="_blank" rel="noopener">${esc(url)}</a>`;
+            return `<li>${link}${claim ? `<span class="claim">${claim}</span>` : ''}</li>`;
+          }).join('')
+        : '<span class="empty-ok">Không có.</span>';
+
+      // dimensions with score bars
       const dims = c.dimensions || {};
-      const rows = Object.entries(dims).map(([k, d]) =>
-        `<tr><td>${k}</td><td>${d && d.score !== undefined ? d.score : 'N/A'}</td><td>${d && d.notes ? d.notes : ''}</td></tr>`
-      ).join('');
-      $('dims').innerHTML = rows ? '<table><tr><th>Dimension</th><th>Score</th><th>Notes</th></tr>' + rows + '</table>' : '';
+      const rows = Object.entries(dims).map(([k, d]) => {
+        const s = d && d.score != null ? d.score : 0;
+        const pct = Math.max(0, Math.min(100, s));
+        return `<tr>
+          <td>${esc(k)}</td>
+          <td><div class="bar"><span style="width:0%" data-pct="${pct}"></span></div></td>
+          <td style="width:44px;font-weight:700">${s}/100</td>
+          <td>${d && d.notes ? esc(d.notes) : ''}</td>
+        </tr>`;
+      }).join('');
+      $('dims').innerHTML = rows
+        ? '<table><tr><th>Dimension</th><th></th><th>Điểm</th><th>Nhận xét</th></tr>' + rows + '</table>'
+        : '<span class="empty-ok">Không có.</span>';
 
       const issues = c.issues || [];
       $('issues').innerHTML = issues.length
-        ? '<ul>' + issues.map(i => `<li>${i}</li>`).join('') + '</ul>'
-        : '<span style="color:var(--ok)">Không có vấn đề nào.</span>';
+        ? '<ul>' + issues.map(i => `<li>${esc(i)}</li>`).join('') + '</ul>'
+        : '<span class="empty-ok">Không có vấn đề nào.</span>';
+
+      const revs = c.suggested_revisions || [];
+      $('revs').innerHTML = revs.length
+        ? '<ul>' + revs.map(r => `<li>${esc(r)}</li>`).join('') + '</ul>'
+        : '<span class="empty-ok">Không có đề xuất.</span>';
 
       $('result').classList.add('active');
+      $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // animate bars
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          document.querySelectorAll('.bar span[data-pct]').forEach(b => {
+            b.style.width = b.dataset.pct + '%';
+          });
+        }, 60);
+      });
     }
+
+    $('copy-btn').addEventListener('click', () => {
+      const parts = [
+        $('report-title').textContent,
+        $('report-summary').textContent,
+        $('report-body').innerText,
+      ].filter(Boolean);
+      const text = parts.join('\n\n');
+      navigator.clipboard.writeText(text).then(
+        () => showToast('Đã copy báo cáo.', 'ok'),
+        () => showToast('Không copy được.', 'err')
+      );
+    });
+
+    let currentThreadId = null;
+    let source = null;
+    let providerVal = 'openai';
+    let modelVal = '';
+
+    function setBtnDisabled(v) {
+      $('run-btn').disabled = v;
+      $('run-btn').textContent = v ? '⏳ Đang chạy…' : '🚀 Chạy workflow';
+    }
+
+    function showPause(ev) {
+      const d = ev.data || ev;
+      const best = d.result && d.result.best_report;
+      let txt = `Vòng sửa dừng ở ${d.revision_count} (max ${d.max_revisions}) chưa đạt ngưỡng.`;
+      if (best) {
+        txt = `Bản tốt nhất: vòng ${best.revision} — ${best.score}/100. ` + txt;
+      }
+      $('pause-info').textContent = txt;
+      $('pause').classList.add('active');
+      $('pause').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    $('add-rounds-btn').addEventListener('click', async () => {
+      const extra = parseInt($('add-rounds').value || '1', 10);
+      if (!currentThreadId) return;
+      $('pause').classList.remove('active');
+      resetProgress();
+      $('progress').classList.add('active');
+      setBtnDisabled(true);
+      const body = new URLSearchParams({
+        thread_id: currentThreadId,
+        add_rounds: String(extra),
+        provider: providerVal,
+        model: modelVal,
+        topic: $('topic').value.trim(),
+      });
+      const res = await fetch('/continue', { method: 'POST', body });
+      if (!res.ok) { showToast('Không thể thêm vòng.'); setBtnDisabled(false); }
+    });
+
+    $('keep-best-btn').addEventListener('click', async () => {
+      if (!currentThreadId) return;
+      setBtnDisabled(true);
+      const res = await fetch('/finalize?thread_id=' + encodeURIComponent(currentThreadId) +
+        '&topic=' + encodeURIComponent($('topic').value.trim()));
+      if (!res.ok) { showToast('Không thể lưu.'); setBtnDisabled(false); }
+    });
 
     $('run-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const topic = $('topic').value.trim();
-      if (!topic) { toast('Nhập chủ đề trước'); return; }
+      if (!topic) { showToast('Nhập chủ đề trước'); return; }
+
+      currentThreadId = 'web-' + Date.now();
+      providerVal = $('provider').value;
+      modelVal = $('model').value;
 
       const params = new URLSearchParams({
         topic,
-        provider: $('provider').value,
-        model: $('model').value,
+        provider: providerVal,
+        model: modelVal,
         max_revisions: $('max_revisions').value || '3',
-        thread_id: 'web-' + Date.now(),
+        thread_id: currentThreadId,
       });
 
       // reset UI
       $('result').classList.remove('active');
+      $('pause').classList.remove('active');
       resetProgress();
       $('progress').classList.add('active');
-      $('run-btn').disabled = true;
-      $('run-btn').textContent = 'Đang chạy…';
+      setBtnDisabled(true);
       setStepState('start', 'running');
 
-      const es = new EventSource('/stream?' + params.toString());
+      if (source) source.close();
+      source = new EventSource('/stream?' + params.toString());
 
-      es.addEventListener('update', (ev) => {
+      source.addEventListener('update', (ev) => {
         const data = JSON.parse(ev.data);
         if (data.type === 'step') {
           setStepState(data.step, 'done');
-          // advance the spinner to the next step
           const order = ['start', 'planner', 'researcher', 'writer', 'critic'];
           const idx = order.indexOf(data.step);
           if (idx >= 0 && idx + 1 < order.length) {
@@ -276,27 +647,33 @@
         }
       });
 
-      es.addEventListener('result', (ev) => {
+      source.addEventListener('paused', (ev) => {
+        const data = JSON.parse(ev.data);
+        setStepState('critic', 'done');
+        showPause(data);
+        setBtnDisabled(false);
+      });
+
+      source.addEventListener('result', (ev) => {
         const data = JSON.parse(ev.data);
         const result = data.result;
         setStepState('critic', 'done');
         renderResult(result);
-        es.close();
-        $('run-btn').disabled = false;
-        $('run-btn').textContent = 'Chạy workflow';
+        if (data.saved) showToast('Đã lưu: ' + data.saved, 'ok');
+        source.close();
+        setBtnDisabled(false);
       });
 
-      es.addEventListener('error', (ev) => {
+      source.addEventListener('error', (ev) => {
         try {
           const data = JSON.parse(ev.data);
           if (data.type === 'error') {
-            toast('Lỗi: ' + data.message);
+            showToast('Lỗi: ' + data.message);
             setStepState('start', 'error');
           }
         } catch (_) { /* SSE network error event */ }
         if (ev.readyState === EventSource.CLOSED) {
-          $('run-btn').disabled = false;
-          $('run-btn').textContent = 'Chạy workflow';
+          setStepDisabled(false);
         }
       });
     });

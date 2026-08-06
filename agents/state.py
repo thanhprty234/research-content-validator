@@ -24,3 +24,7 @@ class WorkflowState(TypedDict, total=False):
     critic_feedback: list
     revision_count: int
     final_report: Optional[dict]
+
+    # best report seen so far (kept when revisions run out before approval)
+    best_report: Optional[dict]
+    best_critique: Optional[dict]

@@ -40,11 +40,19 @@ def test_missing_verdict_treated_as_revise():
     print("missing verdict OK")
 
 
+def test_exceeds_max_finishes():
+    os.environ["MAX_REVISIONS"] = "3"
+    state = {"critique": {"verdict": "REVISE"}, "revision_count": 4}
+    assert G._should_revise(state) == "finish"
+    print("exceeds max finishes OK")
+
+
 def main():
     test_revise_below_max()
     test_revise_at_max()
     test_approve_finishes()
     test_missing_verdict_treated_as_revise()
+    test_exceeds_max_finishes()
     print("GRAPH TEST OK")
 
 

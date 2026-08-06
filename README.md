@@ -23,7 +23,8 @@ project/
 │   └── critic.txt
 │
 ├── tools/
-│   └── search.py            # Search tool + caching (SQLite)
+│   ├── search.py            # Search tool + caching (SQLite)
+│   └── plan_cache.py        # Cache research plan theo chủ đề (SQLite)
 │
 ├── models/
 │   └── llm.py               # Model abstraction (OpenAI/Anthropic/Gemini/Ollama/3rd-party)
@@ -100,6 +101,7 @@ OPENAI_API_KEY=sk-dán-key-thật-của-bạn-vào-đây
 | Groq | `groq` | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
 | Together | `together` | `TOGETHER_API_KEY` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` |
 | OpenCode Zen | `opencode` | `OPENCODE_API_KEY` | model hỗ trợ bởi Zen (vd `deepseek/deepseek-chat`) |
+| Custom (API thứ 3) | `custom` | `CUSTOM_API_KEY` | `<model-id>` do nhà cung cấp quy định |
 | LM Studio / llama.cpp | `local` | `OPENAI_API_KEY` (bất kỳ) | tên model local |
 
 Các provider **OpenAI-compatible** (`openrouter`, `deepseek`, `groq`, `together`, `mistral`, `opencode`)
@@ -108,6 +110,21 @@ thì thiết lập `OPENAI_BASE_URL` trong `.env`.
 
 API key chỉ được đặt trong file **`.env`** (đã có trong `.gitignore`) — **không bao giờ**
 dán trực tiếp vào code.
+
+### Dùng API thứ 3 (provider `custom`)
+
+Bất kỳ API nào tương thích OpenAI (vd các nền tảng proxy/AI khác) đều dùng được bằng
+`MODEL_PROVIDER=custom` — không cần sửa code, chỉ điền vào `.env`:
+
+```ini
+MODEL_PROVIDER=custom
+MODEL_NAME=<model-id-cua-nha-cung-cap>
+CUSTOM_BASE_URL=https://api.nhacungcap.com/v1
+CUSTOM_API_KEY=sk-...
+```
+
+Web UI đọc provider mặc định từ `MODEL_PROVIDER` trong `.env`, nên khi mở form sẽ tự
+chọn đúng provider đang dùng — chỉ cần bấm "Chạy workflow".
 
 ## Cách dùng
 
@@ -185,6 +202,24 @@ Dùng `llm.with_structured_output(Schema)` nên output luôn hợp lệ, không 
 `tools/search.py` cache kết quả tìm kiếm vào `output/search_cache.sqlite` để tránh
 gọi API web nhiều lần cho cùng câu query. Bật web search thật bằng `TAVILY_API_KEY`
 trong `.env`; nếu không có, pipeline dùng placeholder offline để vẫn chạy được.
+
+`tools/plan_cache.py` cache kế hoạch nghiên cứu theo chủ đề (`output/plan_cache.sqlite`).
+Khi chạy lại cùng một chủ đề, Planner dùng ngay `research_questions` + `outline` cũ
+(không gọi LLM), giúp các câu query của Researcher ổn định và tận dụng được search cache.
+Tắt bằng `PLAN_CACHE=0` hoặc cờ `--no-plan-cache`.
+
+## Khi hết vòng sửa mà chưa đạt ngưỡng
+
+Nếu critic vẫn trả `REVISE` sau khi hết `MAX_REVISIONS`, hệ thống:
+
+- **CLI**: đưa ra lựa chọn tương tác:
+  ```
+  Nhập số vòng muốn thêm (0 = giữ bản tốt nhất và dừng) > _
+  ```
+  Chọn > 0 sẽ tăng `MAX_REVISIONS` và chạy tiếp; chọn 0 sẽ dừng và lưu.
+- **Web UI**: hiện khối "Hết vòng sửa" với 2 nút **Thêm vòng & chạy tiếp** / **Giữ bản tốt nhất**.
+- **Bản tốt nhất**: mỗi vòng critic giữ lại bản báo cáo có điểm cao nhất (`best_report`),
+  nên nếu vòng sau điểm thấp hơn, output vẫn lưu **bản cao nhất** kèm note rõ đã hết vòng.
 
 ## Observability (LangSmith)
 

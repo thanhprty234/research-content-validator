@@ -64,16 +64,31 @@ def test_critic_revise():
     out = critic_node(state, fake)
     assert out["critique"]["verdict"] == "REVISE", "critic should revise before approving"
     assert out["final_report"] is None, "final_report should be None on REVISE"
+    assert out["best_report"]["score"] == 55, "best_report should track the revise score"
     print("critic(revise) OK:", out["critique"]["verdict"])
+
+
+def test_critic_keeps_best_report():
+    fake = FakeLLM(approve_after=99)  # always REVISE
+    state = {"title": "t", "summary": "s", "body": "first"}
+    out1 = critic_node(state, fake)
+    best1 = dict(out1["best_report"])
+    # a worse revision must not overwrite the held best
+    fake.critiques += 100  # force the next approve after many calls is irrelevant
+    out2 = critic_node(state, fake)
+    assert out2["best_report"]["score"] >= best1["score"], "best should never drop"
+    print("critic keeps best OK")
 
 
 def main():
     os.environ["MAX_REVISIONS"] = "4"
+    os.environ["PLAN_CACHE"] = "0"
     test_planner()
     test_researcher()
     test_writer()
     test_critic_approve()
     test_critic_revise()
+    test_critic_keeps_best_report()
     print("AGENTS TEST OK")
 
 

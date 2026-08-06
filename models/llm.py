@@ -74,7 +74,11 @@ def _provider_key(cfg: ModelConfig, fallback_env: str) -> Optional[str]:
     provider whose dedicated var is empty/absent is treated as keyless (many
     free tiers, e.g. OpenCode Zen free models, need no auth header at all).
     """
-    key_env = get_provider_spec(cfg.provider).key_env
+    provider = (cfg.provider or "").lower()
+    if provider == "custom":
+        return os.getenv("CUSTOM_API_KEY") or (cfg.api_key or os.getenv(fallback_env)) or None
+
+    key_env = get_provider_spec(provider).key_env
     if key_env:
         value = os.getenv(key_env)
         return value if value else None
@@ -92,6 +96,12 @@ def _resolve_base_url(cfg: ModelConfig) -> Optional[str]:
     provider = (cfg.provider or "").lower()
     if provider == "openai":
         return cfg.base_url or os.getenv("OPENAI_BASE_URL")
+    if provider == "custom":
+        return (
+            os.getenv("CUSTOM_BASE_URL")
+            or cfg.base_url
+            or os.getenv("OPENAI_BASE_URL")
+        )
     default = get_provider_spec(provider).base_url
     if default:
         return default

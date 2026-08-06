@@ -20,6 +20,7 @@ import graph as G
 
 def main():
     os.environ["MAX_REVISIONS"] = "4"
+    os.environ["PLAN_CACHE"] = "0"
     fake = FakeLLM(approve_after=2)
 
     state = {"topic": "Water cycle"}

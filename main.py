@@ -55,6 +55,7 @@ def parse_args():
     parser.add_argument("--model", help="Model name")
     parser.add_argument("--stream", action="store_true", help="Stream per-step progress")
     parser.add_argument("--max-revisions", type=int, help="Max writer/critic loops")
+    parser.add_argument("--no-plan-cache", action="store_true", help="Ignore cached research plans (refresh data)")
     parser.add_argument("--thread-id", help="Checkpoint thread id (for --resume)")
     parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint for thread")
     parser.add_argument("--list-providers", action="store_true", help="List supported providers")
@@ -85,6 +86,8 @@ def main():
 
     if args.max_revisions:
         os.environ["MAX_REVISIONS"] = str(args.max_revisions)
+    if args.no_plan_cache:
+        os.environ["PLAN_CACHE"] = "0"
 
     setup_observability()
     llm = get_model(cfg)
@@ -97,13 +100,65 @@ def main():
         write_outputs(final)
         return
 
-    if args.stream:
-        final_state = _stream_with_spinner(args.topic, thread_id=args.thread_id, llm=llm)
-    else:
-        final_state, _ = run(args.topic, thread_id=args.thread_id, llm=llm)
+    final_state = _run_with_prompt(args.topic, args.thread_id, llm, stream=args.stream)
 
     print_verdict(final_state)
     write_outputs(final_state)
+
+
+def _run_with_prompt(topic: str, thread_id=None, llm=None, stream: bool = False) -> dict:
+    """Run the workflow, letting the user add more revision rounds when the
+    revisions run out before the critic approves.
+
+    Each loop re-runs the graph; the planner uses its disk cache so re-runs are
+    cheap. The critic keeps the best report seen so far.
+    """
+    while True:
+        if stream:
+            final_state = _stream_with_spinner(topic, thread_id=thread_id, llm=llm)
+        else:
+            final_state, _ = run(topic, thread_id=thread_id, llm=llm)
+
+        critique = final_state.get("critique") or {}
+        verdict = critique.get("verdict", "UNKNOWN")
+        if verdict != "REVISE":
+            return final_state
+
+        best = final_state.get("best_report") or {}
+        score = critique.get("overall_score", "N/A")
+        best_score = best.get("score", score)
+
+        try:
+            from cli_ui import _safe_write
+            _safe_write("\n")
+            _safe_write("=" * 50 + "\n")
+            _safe_write(
+                f"Revisions ran out ({final_state.get('revision_count', 0)} / "
+                f"{os.getenv('MAX_REVISIONS', '3')}) before approval.\n"
+            )
+            if best:
+                _safe_write(
+                    f"Best round so far: {best.get('revision')} ({best.get('score')}/100) "
+                    f"(current: {score}/100).\n"
+                )
+            else:
+                _safe_write(f"Current score: {score}/100.\n")
+            answer = input(
+                "Add how many more revision rounds? (0 = keep the best report and stop) > "
+            ).strip()
+        except EOFError:
+            answer = "0"
+
+        extra = 0
+        try:
+            extra = int(answer)
+        except ValueError:
+            extra = 0
+        if extra <= 0:
+            return final_state
+
+        new_max = final_state.get("revision_count", 0) + extra
+        os.environ["MAX_REVISIONS"] = str(new_max)
 
 
 def _stream_with_spinner(topic: str, thread_id=None, llm=None) -> dict:
