@@ -1,0 +1,6 @@
+# Phase 4.1 — Agent Registry
+agents:
+  planner: { module: agents.planner, class: PlannerAgent }
+  researcher: { module: agents.researcher, class: ResearcherAgent }
+  writer: { module: agents.writer, class: WriterAgent }
+  critic: { module: agents.critic, class: CriticAgent }

@@ -176,6 +176,28 @@ def get_model(cfg: Optional[ModelConfig] = None):
     raise ValueError(f"Unsupported provider: {cfg.provider}")
 
 
+# ponytail: flat rate table — add providers as needed; uses best-known public price for approximation
+_COST_PER_M_TOKEN = {
+    "openai":  {"gpt-4o-mini":    (0.150, 0.600), "gpt-4o":       (2.50, 10.00), "o1-mini":      (1.10, 4.40)},
+    "anthropic":{"claude-3-5-sonnet": (3.00, 15.00), "claude-3-haiku":   (0.25, 1.25), "claude-3-opus":    (15.00, 75.00)},
+    "gemini":   {"gemini-1.5-pro": (1.25, 5.00),  "gemini-1.5-flash": (0.075, 0.30)},
+    "ollama":   {},  # free — no cost
+}
+
+
+def estimate_cost(provider: str, input_tokens: int, output_tokens: int, model: str = "") -> float:
+    """Return estimated USD cost for a single LLM call. Returns 0.0 for unknowns."""
+    provider = (provider or "").lower()
+    rates = _COST_PER_M_TOKEN.get(provider, {})
+    if not rates:
+        return 0.0
+    model_key = next((m for m in rates if m in (model or "").lower()), None)
+    if not model_key:
+        return 0.0
+    in_rate, out_rate = rates[model_key]  # per 1M tokens
+    return round(input_tokens * in_rate / 1_000_000 + output_tokens * out_rate / 1_000_000, 6)
+
+
 def model_config_from_env() -> ModelConfig:
     raw_max_tokens = os.getenv("MODEL_MAX_TOKENS", "").strip()
     return ModelConfig(

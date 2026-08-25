@@ -6,6 +6,7 @@ import os
 from .common import load_prompt, structured_call
 from .schemas import Critique
 from .state import WorkflowState
+from tools import citation_check
 
 DEFAULT_APPROVE_THRESHOLD = 85
 
@@ -25,10 +26,26 @@ def critic_node(state: WorkflowState, llm=None) -> dict:
         "citations": state.get("citations", []),
     }
 
+    # Run deterministic citation quality checks (gated by CITATION_CHECK env)
+    audit = {}
+    try:
+        audit = citation_check.audit_citations(
+            state.get("citations", []) or [],
+            state.get("key_claims", []) or [],
+            raw_findings=state.get("raw_findings"),
+        )
+    except Exception:
+        pass  # fail-open: never crash pipeline
+
+    # Inject audit summary into prompt context
+    audit_json = json.dumps(audit, ensure_ascii=False) if audit else "{}"
+
+    prompt = load_prompt("critic.txt").replace("{citation_audit_json}", audit_json)
+
     critique: Critique = structured_call(
         llm,
         Critique,
-        load_prompt("critic.txt"),
+        prompt,
         "Report (JSON):\n" + json.dumps(report, ensure_ascii=False, indent=2),
         max_tokens=2000,
     )
@@ -36,6 +53,19 @@ def critic_node(state: WorkflowState, llm=None) -> dict:
     threshold = approve_threshold()
     if critique.overall_score >= threshold:
         critique.verdict = "APPROVED"
+
+    # Append any dead-link / low-authority flags as issues (deterministic, no LLM)
+    if audit and audit.get("enabled"):
+        for url, status in (audit.get("url_status") or {}).items():
+            if not status.get("reachable"):
+                issue = f"Dead/unreachable link: {url}"
+                if issue not in critique.issues:
+                    critique.issues.append(issue)
+        low = audit.get("low_authority_count", 0)
+        if low:
+            note = f"{low} low-authority source(s) detected"
+            if note not in critique.issues:
+                critique.issues.append(note)
 
     # Keep the best report/verdict seen so far so a later, worse revision
     # cannot overwrite the best result when revisions run out before approval.
@@ -61,6 +91,7 @@ def critic_node(state: WorkflowState, llm=None) -> dict:
         "final_report": report if critique.verdict == "APPROVED" else None,
         "best_report": best_report,
         "best_critique": best_critique,
+        "citation_audit": audit if audit.get("enabled") else {},
     }
 
 

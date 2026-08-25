@@ -5,14 +5,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from .common import load_prompt, structured_call
 from .schemas import Note
 from .state import WorkflowState
-from tools.search import search
+from agents.search import search_queries_sync
 
 MAX_WORKERS = 3
 
 
 def _research_one(q: str, system: str, llm=None) -> tuple:
     """Search + summarize a single research question into a note."""
-    results = search(q, max_results=4)
+    results = search_queries_sync(q, max_results=4)
     context = "\n\n".join(
         f"[{r.get('title', '')}] {r.get('url', '')}\n{r.get('content', '')}"
         for r in results

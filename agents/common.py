@@ -80,6 +80,19 @@ def _should_method_fallback(exc, remaining_methods) -> bool:
     return "response_format" in msg or "unavailable" in msg or "not supported" in msg
 
 
+# ponytail: per-call usage log
+_last_usage: dict | None = None
+
+
+
+def last_usage() -> dict:
+    """Return and clear the most recent LLM usage metadata."""
+    global _last_usage
+    result = _last_usage or {}
+    _last_usage = None
+    return result
+
+
 def structured_call(llm, schema: type[BaseModel], system: str, user: str, max_tokens: Optional[int] = None):
     """Invoke an LLM with schema-constrained output.
 
@@ -114,7 +127,10 @@ def structured_call(llm, schema: type[BaseModel], system: str, user: str, max_to
         remaining = methods[methods.index(method) + 1:]
         for attempt in range(1, MAX_STRUCTURED_ATTEMPTS + 1):
             try:
-                return _invoke_structured(llm, schema, system, user, max_tokens, method)
+                result = _invoke_structured(llm, schema, system, user, max_tokens, method)
+                global _last_usage
+                _last_usage = getattr(result, "usage_metadata", None) or {}
+                return result
             except Exception as exc:
                 last_error = exc
                 if _retryable(exc):
@@ -141,3 +157,8 @@ def structured_call(llm, schema: type[BaseModel], system: str, user: str, max_to
             continue
         break
     raise last_error
+
+
+def _is_truncated(text: str) -> bool:
+    """Detect common LLM truncation markers (cheap models often cut responses short)."""
+    return bool(text) and text.rstrip().endswith(("...", "\n..."))

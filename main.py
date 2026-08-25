@@ -6,6 +6,7 @@ Features:
 - Checkpointing (--resume continues a thread).
 - LangSmith observability when LANGCHAIN_API_KEY is set.
 - Structured output to output/.
+- Cost tracking via --budget flag.
 """
 
 import argparse
@@ -21,6 +22,7 @@ from graph import run, stream, build_graph
 from stream_events import consume_stream
 from cli_ui import _Spinner, print_verdict, _log_step
 from output import write_outputs
+from agents.common import last_usage
 
 
 # --------------------------------------------------------------------------- #
@@ -60,6 +62,7 @@ def parse_args():
     parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint for thread")
     parser.add_argument("--list-providers", action="store_true", help="List supported providers")
     parser.add_argument("--print-config", action="store_true", help="Print model config and exit")
+    parser.add_argument("--budget", type=float, default=None, help="Max USD budget per run; aborts if exceeded")
     return parser.parse_args()
 
 
@@ -89,6 +92,10 @@ def main():
     if args.no_plan_cache:
         os.environ["PLAN_CACHE"] = "0"
 
+    # budget guard
+    if args.budget is not None:
+        os.environ["BUDGET"] = str(args.budget)
+
     setup_observability()
     llm = get_model(cfg)
 
@@ -96,14 +103,28 @@ def main():
         graph = build_graph(llm=llm)
         config = {"configurable": {"thread_id": args.thread_id or "default"}}
         final = graph.invoke(None, config=config)
+        _print_cost_summary(final)
         print_verdict(final)
         write_outputs(final)
         return
 
     final_state = _run_with_prompt(args.topic, args.thread_id, llm, stream=args.stream)
-
+    _print_cost_summary(final_state)
     print_verdict(final_state)
     write_outputs(final_state)
+
+
+def _print_cost_summary(state: dict):
+    """Print cost info when token_log is present (real LLM runs)."""
+    token_log = state.get("token_log") or []
+    if not token_log:
+        return
+    total = round(state.get("total_cost_usd", 0.0), 6)
+    total_tokens = sum(
+        e.get("tokens", {}).get("input", 0) + e.get("tokens", {}).get("output", 0)
+        for e in token_log
+    )
+    print(f"[cost] {total_tokens:,} tokens · ${total:.6f}/run")
 
 
 def _run_with_prompt(topic: str, thread_id=None, llm=None, stream: bool = False) -> dict:
@@ -118,6 +139,14 @@ def _run_with_prompt(topic: str, thread_id=None, llm=None, stream: bool = False)
             final_state = _stream_with_spinner(topic, thread_id=thread_id, llm=llm)
         else:
             final_state, _ = run(topic, thread_id=thread_id, llm=llm)
+
+        # budget check
+        budget = os.getenv("BUDGET")
+        if budget:
+            total_cost = final_state.get("total_cost_usd", 0.0)
+            if total_cost > float(budget):
+                print(f"[budget] Exceeded ${budget} budget (${total_cost:.6f}). Keeping best report.")
+                break
 
         critique = final_state.get("critique") or {}
         verdict = critique.get("verdict", "UNKNOWN")

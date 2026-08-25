@@ -1,4 +1,4 @@
-"""Persist workflow results (report.md + verdict.json) to the output/ directory."""
+"""Persist workflow results (report.md + verdict.json + cost_summary.json) to the output/ directory."""
 
 import json
 import os
@@ -48,6 +48,23 @@ def write_outputs(state: dict) -> Path:
     (out_dir / "verdict.json").write_text(
         json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+
+    # ponytail: cost summary — skip when token_log is empty (local/offline runs)
+    token_log = state.get("token_log") or []
+    if token_log:
+        cost_summary = {
+            "total_cost_usd": round(state.get("total_cost_usd", 0.0), 6),
+            "total_tokens": sum(
+                e.get("tokens", {}).get("input", 0) + e.get("tokens", {}).get("output", 0)
+                for e in token_log
+            ),
+            "per_step": token_log,
+        }
+        (out_dir / "cost_summary.json").write_text(
+            json.dumps(cost_summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        _safe_write(f"Saved cost summary -> {out_dir / 'cost_summary.json'}\n")
+
     _safe_write(f"\nSaved report  -> {out_dir / 'report.md'}\n")
     _safe_write(f"Saved verdict -> {out_dir / 'verdict.json'}\n")
     return out_dir
