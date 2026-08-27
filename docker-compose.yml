@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./output:/app/output
+      - ./templates:/app/templates  # hot-reload for UI tweaks
+    restart: unless-stopped
+    depends_on:
+      - searxng
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080
+
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    volumes:
+      - searxng_data:/etc/searxng
+
+volumes:
+  searxng_data:
