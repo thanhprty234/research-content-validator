@@ -12,7 +12,12 @@ langchain-ollama>=0.2
 langchain-community>=0.3
 
 # Search (optional live web search)
+# Option A: Tavily (paid, needs TAVILY_API_KEY)
 # tavily-python>=0.5
+#
+# Option B: DuckDuckGo via ddgs (free, no key needed, fallback when Tavily unavailable)
+ddgs>=9.0
+primp>=2.0
 
 # Observability
 langsmith>=0.1

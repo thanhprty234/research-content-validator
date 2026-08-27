@@ -1,254 +1,280 @@
-# Research & Content Validator (Supervisor + Critic)
+# Research & Content Validator
 
-Hệ thống pipeline dùng **LangGraph** với 4 agent: **Planner → Researcher → Writer → Critic**
-để tự nghiên cứu một chủ đề, viết báo cáo, rồi phê duyệt/đánh giá theo vòng lặp.
+A multi-agent research pipeline with LLM-based planning, live web search, drafting, and a built-in critic loop with cost tracking and checkpointing.
 
-## Cấu trúc dự án
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![LangGraph](https://img.shields.io/badge/LangGraph-✅-blueviolet)](https://langchain-ai.github.io/langgraph/)
 
-```
-project/
-│
-├── agents/                  # Các agent (mỗi file = 1 node trong graph)
-│   ├── common.py            # Helper dùng chung (load prompt + structured call)
-│   ├── planner.py           # Lập kế hoạch nghiên cứu (struct output)
-│   ├── researcher.py        # Tìm kiếm & gom dữ liệu (dùng tools/search)
-│   ├── writer.py            # Viết báo cáo hoàn chỉnh (struct output)
-│   ├── critic.py            # Phê duyệt/đánh giá (struct output)
-│   └── schemas.py           # Pydantic models dùng chung
-│
-├── prompts/                 # System prompts (tách rời khỏi code)
-│   ├── planner.txt
-│   ├── researcher.txt
-│   ├── writer.txt
-│   └── critic.txt
-│
-├── tools/
-│   ├── search.py            # Search tool + caching (SQLite)
-│   └── plan_cache.py        # Cache research plan theo chủ đề (SQLite)
-│
-├── models/
-│   └── llm.py               # Model abstraction (OpenAI/Anthropic/Gemini/Ollama/3rd-party)
-│
-├── evaluation/
-│   ├── criteria.py          # Bộ tiêu chí đánh giá + dataset mẫu
-│   └── evaluate.py          # Đo chất lượng báo cáo
-│
-├── graph.py                 # LangGraph workflow + checkpointer (memory/sqlite)
-├── stream_events.py         # Gắn nhãn bước tiến trình (dùng cho UI + CLI)
-├── cli_ui.py                # Trình bày terminal (spinner, verdict, safe-unicode)
-├── output.py                # Ghi report.md + verdict.json
-├── webui.py                 # Web UI (Flask + SSE real-time)
-├── templates/               # Trang HTML cho web UI
-├── main.py                  # CLI (streaming + spinner, resume, observability)
-├── output/                  # Kết quả (report.md, verdict.json, cache, checkpoints)
-├── tests/                   # Test offline (fake LLM, không cần API key)
-│   ├── __init__.py
-│   ├── fakes.py             # FakeLLM dùng chung
-│   ├── test_agents.py       # Test từng agent node
-│   ├── test_graph.py        # Test logic routing (rewrite/finish)
-│   └── test_smoke.py        # Test tích hợp toàn luồng
-├── requirements.txt
-└── .env.example
-```
+---
 
-## Luồng workflow
+## ✨ Features
 
-```
-topic
-  ▼
-Planner ──► research_questions + outline
-  ▼
-Researcher ──► facts + sources (dùng tools/search, có cache)
-  ▼
-Writer ──► draft report (Markdown + citations)
-  ▼
-Critic ──► approve? ──REVISE──► Writer (loop, tối đa MAX_REVISIONS)
-  │
- APPROVED
-  ▼
-report.md + verdict.json
-```
+1. **Multi-agent LangGraph pipeline**: Planner → Researcher → Writer → Critic (configurable revision loop).
+2. **Multi-provider model support**: OpenAI, Anthropic, Gemini, Ollama, OpenRouter, DeepSeek, Groq, Together, Mistral, OpenCode Zen, Azure, and any custom OpenAI-compatible endpoint.
+3. **Built-in cost tracking & budget guard**: Estimates per-run token cost and aborts when budget is exceeded.
+4. **Checkpoint / resume**: Save progress to `memory` (default) or `sqlite` and resume interrupted runs via `--resume`.
+5. **Dual search fallback**: Tavily (optional, paid) → DuckDuckGo via `ddgs` (free, no key) → offline CSV placeholders.
+6. **Citation quality gate**: Every claim must cite a source; broken links cause revision.
+7. **Human-in-the-loop**: HITL checkpoint support for manual review before finalizing.
+8. **Agent registry**: YAML-backed provider configuration with cost estimates.
+9. **Web UI**: Flask app with real-time SSE streaming of workflow progress.
 
-## Cài đặt
+---
 
-```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+## 🚀 Quick Start
+
+### 1. Clone & install
+
+```bash
+git clone https://github.com/thanhprty234/research-content-validator.git
+cd research-content-validator
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-> Lưu ý: dùng Python bản chuẩn (Python 3.13 từ python.org), KHÔNG dùng Python của MSYS2
-> vì không cài được các gói như `pydantic`/`tiktoken`.
+### 2. Configure
 
-## Chọn model / nơi dán API key
-
-Tạo file `.env` từ `.env.example`, rồi chọn nhà cung cấp bằng `MODEL_PROVIDER`:
-
-```ini
-MODEL_PROVIDER=openai      # openai | anthropic | gemini | ollama | openrouter | deepseek | groq | together | opencode | local
-MODEL_NAME=gpt-4o-mini
-OPENAI_API_KEY=sk-dán-key-thật-của-bạn-vào-đây
+```bash
+cp .env.example .env
+# Edit .env — set MODEL_PROVIDER, MODEL_NAME, and the matching API key
 ```
 
-| Provider | MODEL_PROVIDER | Biến key | MODEL_NAME (ví dụ) |
-|----------|----------------|----------|--------------------|
-| OpenAI | `openai` | `OPENAI_API_KEY` | `gpt-4o-mini` |
-| Anthropec | `anthropic` | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-20241022` |
-| Google Gemini | `gemini` | `GEMINI_API_KEY` | `gemini-1.5-pro` |
-| Ollama (local) | `ollama` | (không cần) | `llama3.2` |
-| OpenRouter | `openrouter` | `OPENROUTER_API_KEY` | `anthropic/claude-3.5-sonnet` |
-| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` | `deepseek-chat` |
-| Groq | `groq` | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
-| Together | `together` | `TOGETHER_API_KEY` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` |
-| OpenCode Zen | `opencode` | `OPENCODE_API_KEY` | model hỗ trợ bởi Zen (vd `deepseek/deepseek-chat`) |
-| Custom (API thứ 3) | `custom` | `CUSTOM_API_KEY` | `<model-id>` do nhà cung cấp quy định |
-| LM Studio / llama.cpp | `local` | `OPENAI_API_KEY` (bất kỳ) | tên model local |
+### 3. Run
 
-Các provider **OpenAI-compatible** (`openrouter`, `deepseek`, `groq`, `together`, `mistral`, `opencode`)
-tự động dùng base URL đúng, chỉ cần đặt đúng key. Còn `openai`/`azure`/`local`/`custom`
-thì thiết lập `OPENAI_BASE_URL` trong `.env`.
+```bash
+# Basic run
+python main.py --topic "How does RAG improve search relevance?"
 
-API key chỉ được đặt trong file **`.env`** (đã có trong `.gitignore`) — **không bao giờ**
-dán trực tiếp vào code.
+# Stream progress in terminal
+python main.py --topic "..." --stream
 
-### Dùng API thứ 3 (provider `custom`)
+# Set budget guard
+python main.py --topic "..." --budget 2.0
 
-Bất kỳ API nào tương thích OpenAI (vd các nền tảng proxy/AI khác) đều dùng được bằng
-`MODEL_PROVIDER=custom` — không cần sửa code, chỉ điền vào `.env`:
+# Resume a previous run
+python main.py --resume --thread-id my-thread
 
-```ini
-MODEL_PROVIDER=custom
-MODEL_NAME=<model-id-cua-nha-cung-cap>
-CUSTOM_BASE_URL=https://api.nhacungcap.com/v1
-CUSTOM_API_KEY=sk-...
-```
-
-Web UI đọc provider mặc định từ `MODEL_PROVIDER` trong `.env`, nên khi mở form sẽ tự
-chọn đúng provider đang dùng — chỉ cần bấm "Chạy workflow".
-
-## Cách dùng
-
-```powershell
-# Chạy bình thường
-python main.py --topic "Lợi ích và rủi ro của việc nhịn ăn gián đoạn"
-
-# Streaming tiến trình theo từng node
-python main.py --topic "Biến đổi khí hậu" --stream
-
-# Đổi provider/model nhanh từ CLI
-python main.py --topic "AI and jobs" --provider anthropic --model claude-3-5-sonnet-20241022
-
-# Giới hạn số vòng sửa
-python main.py --topic "X" --max-revisions 5
-
-# Ngưỡng điểm để critic tự APPROVED (mặc định 85) — có thể đặt trong .env:
-# APPROVE_THRESHOLD=90
-
-# In danh sách provider / cấu hình model đang dùng
+# List supported providers / print config
 python main.py --list-providers
 python main.py --print-config
 ```
 
-### Spinner khi chạy CLI
+### 4. Web UI (optional)
 
-Khi dùng `--stream`, CLI hiện spinner (⠋⠙⠹…) làm "minh họa chờ", kèm log màu
-mỗi khi một bước hoàn thành (Planner → Researcher → Writer → Critic):
-
-```powershell
-python main.py --topic "Chủ đề" --stream   # hiện spinner + log màu từng bước
+```bash
+python webui.py
+# Open http://127.0.0.1:5000
 ```
 
-## Web UI (giao diện trực quan)
+---
 
-Chạy một web app đơn giản để dùng bằng chuột — không cần gõ lệnh:
+## ⚙️ Configuration
 
-```powershell
-python webui.py                      # mở http://127.0.0.1:5000
-python webui.py --host 0.0.0.0 --port 8000
+All settings are managed through `.env` (see [.env.example](.env.example)).
+
+### Required
+
+| Variable | Description |
+|----------|-------------|
+| `MODEL_PROVIDER` | One of: `openai`, `anthropic`, `gemini`, `ollama`, `openrouter`, `deepseek`, `groq`, `together`, `mistral`, `opencode`, `azure`, `local`, `custom` |
+| `MODEL_NAME` | Model identifier, e.g. `gpt-4o-mini`, `claude-3-haiku-20240307`, `gemini-1.5-flash`, `deepseek-chat`, `llama-3.1-70b` |
+| Provider API key | e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENCODE_API_KEY` |
+
+### Optional
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_TEMPERATURE` | `0.3` | Sampling temperature |
+| `MODEL_MAX_TOKENS` | `4096` | Max output tokens per call |
+| `OPENAI_BASE_URL` | *(none)* | Override base URL for OpenAI-compatible providers |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `MAX_REVISIONS` | `3` | Max writer ↔ critic loops |
+| `APPROVE_THRESHOLD` | `85` | Min critic score for APPROVED |
+| `CHECKPOINTER` | `memory` | `memory` or `sqlite` |
+| `SQLITE_PATH` | `output/checkpoints.sqlite` | SQLite checkpoint file path |
+| `THREAD_ID` | `default` | Default thread id for checkpointing |
+| `TAVILY_API_KEY` | *(none)* | Tavily web search key (optional; DDG fallback works without it) |
+| `LANGCHAIN_API_KEY` | *(none)* | LangSmith tracing key (optional) |
+| `LANGCHAIN_PROJECT` | `research-validator` | LangSmith project name |
+| `BUDGET` | *(none)* | Max USD per run; aborts if exceeded |
+
+### Supported Providers
+
+| Provider | Key Env Var | Base URL | Notes |
+|----------|-------------|----------|-------|
+| `openai` | `OPENAI_API_KEY` | `https://api.openai.com/v1` | Default |
+| `anthropic` | `ANTHROPIC_API_KEY` | *(auto)* | Direct Anthropic SDK |
+| `gemini` / `google` | `GEMINI_API_KEY` | *(auto)* | Google AI Studio |
+| `ollama` | *(none)* | `http://localhost:11434` | Local LLMs |
+| `openrouter` | `OPENROUTER_API_KEY` | *(auto)* | Meta/Llama models |
+| `deepseek` | `DEEPSEEK_API_KEY` | *(auto)* | DeepSeek V3/R1 |
+| `groq` | `GROQ_API_KEY` | *(auto)* | Fast inference |
+| `together` | `TOGETHER_API_KEY` | *(auto)* | Open-source models |
+| `mistral` | `MISTRAL_API_KEY` | *(auto)* | Mistral models |
+| `opencode` | `OPENCODE_API_KEY` | *(auto)* | OpenCode Zen (free tier available) |
+| `azure` | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT` | *(required)* | Azure OpenAI Service |
+| `custom` | `CUSTOM_API_KEY` + `CUSTOM_BASE_URL` | *(required)* | Any OpenAI-compatible endpoint |
+
+> **Tip:** Most third-party providers (DeepSeek, Groq, OpenRouter, Together, Mistral, OpenCode) are OpenAI-compatible and share the same `ChatOpenAI` class under the hood. Only set their dedicated API key env var — base URLs are applied automatically.
+
+---
+
+## 🧩 Architecture
+
+```text
+ ┌─────────┐   ┌─────────────┐   ┌─────────┐   ┌─────────┐
+ │ Planner │→→│  Researcher │→→│  Writer │→→│  Critic │
+ │ (plan)  │   │ (web search)│   │ (draft) │   │ (score) │
+ └─────────┘   └─────────────┘   └─────────┘   └────┬────┘
+                                                     │
+                          ┌──────────────────────────┘
+                          │ (if REVISE and revision_count < MAX_REVISIONS)
+                          ▼
+                      ┌─────────┐
+                      │  Writer │◀──┘
+                      └─────────┘
+                          │
+                          │ (if APPROVED or max revisions reached)
+                          ▼
+                      ┌─────────┐
+                      │  OUTPUT │
+                      │ (report)│
+                      └─────────┘
 ```
 
-Tính năng:
-- Form nhập chủ đề, chọn provider, model và số vòng sửa tối đa.
-- **Streaming real-time (SSE)**: mỗi bước hiện spinner xoay + đánh dấu ✔ khi xong.
-- Khi hoàn thành: hiện verdict (APPROVED/REVISE), điểm, báo cáo Markdown, issues.
+Each agent node transforms `WorkflowState`:
+- **Planner** produces `ResearchPlan` (outline + evidence strategy).
+- **Researcher** performs live web search (`ddgs` fallback when Tavily unavailable).
+- **Writer** composes the full report from plan + sources, produces `[1]` citations.
+- **Critic** scores against 4 dimensions (completeness, factual accuracy, tone, citation quality) and returns `APPROVE` / `REVISE`.
 
-Giao diện đọc cấu hình model/key từ file `.env` (giống CLI), nên chỉ cần chọn
-provider là chạy được.
+---
 
-### Checkpointing & resume
+## 📋 CLI Reference
 
-Nếu bị gián đoạn, workflow lưu trạng thái (thread). Chạy lại với cùng `--thread-id`
-và `--resume` để tiếp tục:
+| Flag | Description |
+|------|-------------|
+| `--topic TEXT` | Research topic (required) |
+| `--provider NAME` | Override provider from env |
+| `--model NAME` | Override model name from env |
+| `--stream` | Stream per-step progress with spinner |
+| `--max-revisions N` | Override MAX_REVISIONS |
+| `--no-plan-cache` | Ignore cached research plans (force refresh) |
+| `--thread-id TEXT` | Checkpoint thread id |
+| `--resume` | Resume from last checkpoint for thread |
+| `--print-config` | Print resolved model config and exit |
+| `--budget FLOAT` | Max USD budget; aborts if exceeded |
+| `--list-providers` | List supported providers |
 
-```powershell
-python main.py --topic "X" --thread-id t1          # lần 1
-python main.py --topic "X" --thread-id t1 --resume # tiếp tục (không làm lại từ đầu)
+---
+
+## 🔄 Revision Loop Logic
+
+The critic evaluates the draft against four quality dimensions:
+
+| Dimension | Max Score | Criteria |
+|-----------|-----------|----------|
+| Completeness | 30 | All plan sections covered? |
+| Factual Accuracy | 30 | Claims backed by sources? |
+| Tone & Readability | 20 | Clear, professional tone? |
+| Citation Quality | 20 | Proper `[n]` format, valid URLs? |
+
+If `verdict == "REVISE"` and `revision_count < MAX_REVISIONS`, the graph routes back to **Writer**. Otherwise it terminates at `END`.
+
+---
+
+## 📄 Output Format
+
+Reports are saved to `output/YYYY-MM-DD_<topic_slug>/` with:
+- `report.md` — Final Markdown with inline `[n]` citations
+- `sources.json` — All fetched URLs + snippets
+- `state.json` — Full workflow state snapshot
+
+---
+
+## 🧪 Testing
+
+```bash
+python tests/test_graph.py
+python tests/test_hitl.py
+python tests/test_validation.py
+python tests/test_cost.py
+python tests/test_registry.py
 ```
 
-Backend checkpointer: mặc định là bộ nhớ (`CHECKPOINTER=memory`); muốn lưu bền qua
-các lần chạy dùng `CHECKPOINTER=sqlite` (file `output/checkpoints.sqlite`).
-
-## Structured Output (Pydantic)
-
-Planner, Writer, Critic trả về JSON chuẩn qua Pydantic (xem `agents/schemas.py`):
-- `ResearchPlan {research_questions, outline}`
-- `Report {title, summary, body, key_claims, citations}`
-- `Critique {dimensions, overall_score, verdict, issues, suggested_revisions}`
-
-Dùng `llm.with_structured_output(Schema)` nên output luôn hợp lệ, không cần parse thủ công.
-
-## Caching
-
-`tools/search.py` cache kết quả tìm kiếm vào `output/search_cache.sqlite` để tránh
-gọi API web nhiều lần cho cùng câu query. Bật web search thật bằng `TAVILY_API_KEY`
-trong `.env`; nếu không có, pipeline dùng placeholder offline để vẫn chạy được.
-
-`tools/plan_cache.py` cache kế hoạch nghiên cứu theo chủ đề (`output/plan_cache.sqlite`).
-Khi chạy lại cùng một chủ đề, Planner dùng ngay `research_questions` + `outline` cũ
-(không gọi LLM), giúp các câu query của Researcher ổn định và tận dụng được search cache.
-Tắt bằng `PLAN_CACHE=0` hoặc cờ `--no-plan-cache`.
-
-## Khi hết vòng sửa mà chưa đạt ngưỡng
-
-Nếu critic vẫn trả `REVISE` sau khi hết `MAX_REVISIONS`, hệ thống:
-
-- **CLI**: đưa ra lựa chọn tương tác:
-  ```
-  Nhập số vòng muốn thêm (0 = giữ bản tốt nhất và dừng) > _
-  ```
-  Chọn > 0 sẽ tăng `MAX_REVISIONS` và chạy tiếp; chọn 0 sẽ dừng và lưu.
-- **Web UI**: hiện khối "Hết vòng sửa" với 2 nút **Thêm vòng & chạy tiếp** / **Giữ bản tốt nhất**.
-- **Bản tốt nhất**: mỗi vòng critic giữ lại bản báo cáo có điểm cao nhất (`best_report`),
-  nên nếu vòng sau điểm thấp hơn, output vẫn lưu **bản cao nhất** kèm note rõ đã hết vòng.
-
-## Observability (LangSmith)
-
-Thêm vào `.env`:
-
-```ini
-LANGCHAIN_API_KEY=lsv2-...
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_PROJECT=research-validator
+Or run all:
+```bash
+python -m pytest tests/ -v
 ```
 
-Khi có key, mọi lần chạy đều được trace lên LangSmith (prompt, token, latency, lỗi).
+---
 
-## Evaluation
+## 🔧 Troubleshooting
 
-Đo chất lượng báo cáo theo bộ tiêu chí (`factual_accuracy, citation_support,
-coherence, objectivity_bias, completeness`) trên dataset mẫu:
+| Problem | Fix |
+|---------|-----|
+| `Unsupported provider: xxx` | Check `MODEL_PROVIDER` in `.env`. See provider table above. |
+| `model parameter is required` | Set `MODEL_NAME` in `.env` (e.g. `MODEL_NAME=gpt-4o-mini`). |
+| `Rate limit / 429 errors` | Check provider quota. Switch provider or wait for reset. |
+| Agent loop stuck revising | Lower `APPROVE_THRESHOLD` or increase `MAX_REVISIONS`. |
+| Broken citations | Ensure `TAVILY_API_KEY` or `DDGS_ENABLED=true` is set for live search. |
+| `OPENCODE_API_KEY` not found | Set `OPENCODE_API_KEY=your-key` (or use a free-tier provider with no key). |
 
-```powershell
-python -m evaluation.evaluate              # chạy tất cả test mẫu
-python -m evaluation.evaluate --json       # xuất JSON
+---
+
+## 📁 Project Structure
+
+```text
+.
+├── agents/
+│   ├── common.py       # Shared types, last_usage tracking
+│   ├── critic.py       # Quality scoring + verdict
+│   ├── planner.py      # Research plan generation
+│   ├── researcher.py   # Live web search + fetch
+│   ├── writer.py       # Report writing + citation formatting
+│   ├── state.py        # WorkflowState TypedDict
+│   ├── schemas.py      # Pydantic models
+│   ├── search.py       # Search orchestration (Tavily → DDG → CSV)
+│   ├── searxng.py      # SearXNG search backend
+│   └── registry.py     # YAML-backed agent/provider registry
+├── graph.py            # LangGraph workflow definition
+├── main.py             # CLI entrypoint
+├── webui.py            # Flask web UI
+├── output.py           # Output formatting & file writing
+├── stream_events.py    # Stream consumption helpers
+├── cli_ui.py           # Terminal spinner / color output
+├── tools/
+│   ├── citation_check.py
+│   └── search_fallback.py
+├── models/
+│   └── llm.py          # Multi-provider LLM factory
+├── evaluation/         # Evaluation harness
+├── tests/              # Test suite
+├── ROADMAP.md          # Development roadmap
+├── PLAN.md             # Current sprint plan
+├── requirements.txt
+└── .env.example
 ```
 
-## Kiểm thử nhanh (không cần API key)
+---
 
-```powershell
-python -m tests.test_smoke     # toàn luồng + vòng lặp sửa
-python -m tests.test_agents    # từng agent node
-python -m tests.test_graph     # logic routing
-```
+## 🤝 Contributing
 
-Dùng fake LLM để chạy các node và kiểm tra vòng lặp sửa có dừng đúng không.
+Contributions welcome! Please:
+
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/amazing-thing`)
+3. Commit changes (`git commit -am 'Add amazing thing'`)
+4. Push and open a Pull Request
+
+---
+
+## 📜 License
+
+MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+**Built with ❤️ for researchers and AI enthusiasts.**

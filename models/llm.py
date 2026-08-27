@@ -200,11 +200,17 @@ def estimate_cost(provider: str, input_tokens: int, output_tokens: int, model: s
 
 def model_config_from_env() -> ModelConfig:
     raw_max_tokens = os.getenv("MODEL_MAX_TOKENS", "").strip()
+    provider = os.getenv("MODEL_PROVIDER", "openai")
+    base_url = os.getenv("OPENAI_BASE_URL")
+    api_key = os.getenv("OPENAI_API_KEY")
+    if provider.lower() == "custom":
+        base_url = os.getenv("CUSTOM_BASE_URL") or base_url
+        api_key = os.getenv("CUSTOM_API_KEY") or api_key
     return ModelConfig(
-        provider=os.getenv("MODEL_PROVIDER", "openai"),
+        provider=provider,
         model=os.getenv("MODEL_NAME", os.getenv("OPENAI_MODEL", "gpt-4o-mini")),
-        base_url=os.getenv("OPENAI_BASE_URL"),
-        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=base_url,
+        api_key=api_key,
         temperature=float(os.getenv("MODEL_TEMPERATURE", "0.3")),
         max_tokens=int(raw_max_tokens) if raw_max_tokens else 4096,
     )
