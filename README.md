@@ -54,14 +54,6 @@ cp .env.example .env
 nano .env  # or use your favorite editor
 ```
 
-**Minimal config:**
-```env
-MODEL_PROVIDER=custom
-MODEL_NAME=agnes-2.5-flash
-CUSTOM_API_KEY=sk-your-key-here
-CUSTOM_BASE_URL=https://apihub.agnes-ai.com/v1
-```
-
 ### 3. Run
 
 ```bash
