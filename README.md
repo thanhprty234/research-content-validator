@@ -1,280 +1,393 @@
 # Research & Content Validator
 
-A multi-agent research pipeline with LLM-based planning, live web search, drafting, and a built-in critic loop with cost tracking and checkpointing.
+> **AI-Powered Multi-Agent Research Pipeline** — Automate research, fact-check, and professional report generation with real-time web search, citation validation, and human-in-the-loop quality control.
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![LangGraph](https://img.shields.io/badge/LangGraph-✅-blueviolet)](https://langchain-ai.github.io/langgraph/)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+[![LangGraph](https://img.shields.io/badge/LangGraph-✅-blueviolet?style=flat-square)](https://langchain-ai.github.io/langgraph/)
+[![Docker](https://img.shields.io/badge/Docker-Support-blue?style=flat-square&logo=docker)](#-docker)
+[![Status](https://img.shields.io/badge/Status-Stable-success?style=flat-square)](#)
 
 ---
 
-## ✨ Features
+## ✨ What's Inside
 
-1. **Multi-agent LangGraph pipeline**: Planner → Researcher → Writer → Critic (configurable revision loop).
-2. **Multi-provider model support**: OpenAI, Anthropic, Gemini, Ollama, OpenRouter, DeepSeek, Groq, Together, Mistral, OpenCode Zen, Azure, and any custom OpenAI-compatible endpoint.
-3. **Built-in cost tracking & budget guard**: Estimates per-run token cost and aborts when budget is exceeded.
-4. **Checkpoint / resume**: Save progress to `memory` (default) or `sqlite` and resume interrupted runs via `--resume`.
-5. **Dual search fallback**: Tavily (optional, paid) → DuckDuckGo via `ddgs` (free, no key) → offline CSV placeholders.
-6. **Citation quality gate**: Every claim must cite a source; broken links cause revision.
-7. **Human-in-the-loop**: HITL checkpoint support for manual review before finalizing.
-8. **Agent registry**: YAML-backed provider configuration with cost estimates.
-9. **Web UI**: Flask app with real-time SSE streaming of workflow progress.
+```mermaid
+graph LR
+    A[🔍 Research Topic] --> B[🧠 Planner]
+    B --> C[🌐 Researcher]
+    C --> D[✍️ Writer]
+    D --> E[🔬 Critic]
+    E -->|APPROVE| F[📄 Final Report]
+    E -->|REVISE| D
+```
+
+**One-liner:** Type a topic → Get a professionally sourced report in minutes.
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone & install
+### 1. Install
 
 ```bash
+# Clone the repo
 git clone https://github.com/thanhprty234/research-content-validator.git
 cd research-content-validator
+
+# Create virtual environment
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate      # Linux/macOS
+.venv\Scripts\activate         # Windows
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### 2. Configure
 
 ```bash
+# Copy environment template
 cp .env.example .env
-# Edit .env — set MODEL_PROVIDER, MODEL_NAME, and the matching API key
+
+# Edit .env — set your model provider and API key
+nano .env  # or use your favorite editor
+```
+
+**Minimal config:**
+```env
+MODEL_PROVIDER=custom
+MODEL_NAME=agnes-2.5-flash
+CUSTOM_API_KEY=sk-your-key-here
+CUSTOM_BASE_URL=https://apihub.agnes-ai.com/v1
 ```
 
 ### 3. Run
 
 ```bash
-# Basic run
+# CLI mode (text output)
 python main.py --topic "How does RAG improve search relevance?"
 
-# Stream progress in terminal
-python main.py --topic "..." --stream
-
-# Set budget guard
-python main.py --topic "..." --budget 2.0
-
-# Resume a previous run
-python main.py --resume --thread-id my-thread
-
-# List supported providers / print config
-python main.py --list-providers
-python main.py --print-config
+# Web UI mode (browser interface)
+python webui.py
+# → Open http://localhost:5000
 ```
 
-### 4. Web UI (optional)
+---
 
-```bash
-python webui.py
-# Open http://127.0.0.1:5000
+## 🎯 Key Features
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| 🤖 **Multi-Agent Pipeline** | Planner → Researcher → Writer → Critic loop | ✅ |
+| 🔗 **Web Search** | Tavily + DuckDuckGo fallback (no API key needed) | ✅ |
+| 💰 **Cost Tracking** | Real-time token usage & budget guard | ✅ |
+| 📊 **Citation Quality** | Auto-validates sources & links | ✅ |
+| 🧪 **Human-in-the-Loop** | Manual review checkpoints | ✅ |
+| 💾 **Checkpoint/Resume** | Save & resume interrupted runs | ✅ |
+| 🌐 **Web UI** | Real-time SSE streaming dashboard | ✅ |
+| 🐳 **Docker Support** | One-command deployment | ✅ |
+
+---
+
+## 🏗️ Architecture
+
+### Agent Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    RESEARCH PIPELINE                        │
+├──────────┬──────────┬──────────┬──────────┬───────────────┤
+│ PLANNER  │RESEARCHER│  WRITER  │  CRITIC  │   END         │
+├──────────┼──────────┼──────────┼──────────┼───────────────┤
+│ Generates │ Searches │ Drafts   │ Evaluates│ Outputs final │
+│ research  │ web      │ report   │ quality  │ report        │
+│ plan      │ results  │          │ scores   │               │
+└──────────┴──────────┴──────────┴──────────┴───────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │  REVISE loop (max 3 revisions) │
+              └───────────────────────────────┘
+```
+
+### Data Flow
+
+```
+Input Topic
+    │
+    ▼
+┌─────────┐     ┌─────────────┐     ┌─────────┐
+│ Planner │────▶│ Researcher  │────▶│ Writer  │
+│ (plan)  │     │ (web search)│     │ (draft) │
+└─────────┘     └─────────────┘     └────┬────┘
+                                         │
+                                         ▼
+                                    ┌─────────┐
+                                    │  Critic │
+                                    │ (score) │
+                                    └────┬────┘
+                                         │
+                          ┌──────────────┼──────────────┐
+                          │              │              │
+                       APPROVE         REVISE        (loop back)
+                          │              │
+                          ▼              │
+                     Final Report        │
+                                          │
+                                    ┌─────────┐
+                                    │  Writer │ (revision)
+                                    └─────────┘
 ```
 
 ---
 
 ## ⚙️ Configuration
 
-All settings are managed through `.env` (see [.env.example](.env.example)).
+### Environment Variables
 
-### Required
-
-| Variable | Description |
-|----------|-------------|
-| `MODEL_PROVIDER` | One of: `openai`, `anthropic`, `gemini`, `ollama`, `openrouter`, `deepseek`, `groq`, `together`, `mistral`, `opencode`, `azure`, `local`, `custom` |
-| `MODEL_NAME` | Model identifier, e.g. `gpt-4o-mini`, `claude-3-haiku-20240307`, `gemini-1.5-flash`, `deepseek-chat`, `llama-3.1-70b` |
-| Provider API key | e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `OPENCODE_API_KEY` |
-
-### Optional
-
-| Variable | Default | Description |
+| Variable | Example | Description |
 |----------|---------|-------------|
-| `MODEL_TEMPERATURE` | `0.3` | Sampling temperature |
-| `MODEL_MAX_TOKENS` | `4096` | Max output tokens per call |
-| `OPENAI_BASE_URL` | *(none)* | Override base URL for OpenAI-compatible providers |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `MAX_REVISIONS` | `3` | Max writer ↔ critic loops |
-| `APPROVE_THRESHOLD` | `85` | Min critic score for APPROVED |
-| `CHECKPOINTER` | `memory` | `memory` or `sqlite` |
-| `SQLITE_PATH` | `output/checkpoints.sqlite` | SQLite checkpoint file path |
-| `THREAD_ID` | `default` | Default thread id for checkpointing |
-| `TAVILY_API_KEY` | *(none)* | Tavily web search key (optional; DDG fallback works without it) |
-| `LANGCHAIN_API_KEY` | *(none)* | LangSmith tracing key (optional) |
-| `LANGCHAIN_PROJECT` | `research-validator` | LangSmith project name |
-| `BUDGET` | *(none)* | Max USD per run; aborts if exceeded |
+| `MODEL_PROVIDER` | `custom` | LLM provider |
+| `MODEL_NAME` | `agnes-2.5-flash` | Model identifier |
+| `CUSTOM_API_KEY` | `sk-***` | API key for custom provider |
+| `CUSTOM_BASE_URL` | `https://api.example.com/v1` | API endpoint |
+| `TAVILY_API_KEY` | `tvly-***` | Tavily search (optional) |
+| `LANGCHAIN_TRACING_V2` | `true` | Enable LangSmith tracing |
+| `BUDGET` | `5.0` | Max spend per run (USD) |
 
 ### Supported Providers
 
-| Provider | Key Env Var | Base URL | Notes |
-|----------|-------------|----------|-------|
-| `openai` | `OPENAI_API_KEY` | `https://api.openai.com/v1` | Default |
-| `anthropic` | `ANTHROPIC_API_KEY` | *(auto)* | Direct Anthropic SDK |
-| `gemini` / `google` | `GEMINI_API_KEY` | *(auto)* | Google AI Studio |
-| `ollama` | *(none)* | `http://localhost:11434` | Local LLMs |
-| `openrouter` | `OPENROUTER_API_KEY` | *(auto)* | Meta/Llama models |
-| `deepseek` | `DEEPSEEK_API_KEY` | *(auto)* | DeepSeek V3/R1 |
-| `groq` | `GROQ_API_KEY` | *(auto)* | Fast inference |
-| `together` | `TOGETHER_API_KEY` | *(auto)* | Open-source models |
-| `mistral` | `MISTRAL_API_KEY` | *(auto)* | Mistral models |
-| `opencode` | `OPENCODE_API_KEY` | *(auto)* | OpenCode Zen (free tier available) |
-| `azure` | `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT` | *(required)* | Azure OpenAI Service |
-| `custom` | `CUSTOM_API_KEY` + `CUSTOM_BASE_URL` | *(required)* | Any OpenAI-compatible endpoint |
-
-> **Tip:** Most third-party providers (DeepSeek, Groq, OpenRouter, Together, Mistral, OpenCode) are OpenAI-compatible and share the same `ChatOpenAI` class under the hood. Only set their dedicated API key env var — base URLs are applied automatically.
-
----
-
-## 🧩 Architecture
-
-```text
- ┌─────────┐   ┌─────────────┐   ┌─────────┐   ┌─────────┐
- │ Planner │→→│  Researcher │→→│  Writer │→→│  Critic │
- │ (plan)  │   │ (web search)│   │ (draft) │   │ (score) │
- └─────────┘   └─────────────┘   └─────────┘   └────┬────┘
-                                                     │
-                          ┌──────────────────────────┘
-                          │ (if REVISE and revision_count < MAX_REVISIONS)
-                          ▼
-                      ┌─────────┐
-                      │  Writer │◀──┘
-                      └─────────┘
-                          │
-                          │ (if APPROVED or max revisions reached)
-                          ▼
-                      ┌─────────┐
-                      │  OUTPUT │
-                      │ (report)│
-                      └─────────┘
-```
-
-Each agent node transforms `WorkflowState`:
-- **Planner** produces `ResearchPlan` (outline + evidence strategy).
-- **Researcher** performs live web search (`ddgs` fallback when Tavily unavailable).
-- **Writer** composes the full report from plan + sources, produces `[1]` citations.
-- **Critic** scores against 4 dimensions (completeness, factual accuracy, tone, citation quality) and returns `APPROVE` / `REVISE`.
+| Provider | Key Required | Base URL |
+|----------|--------------|----------|
+| `openai` | `OPENAI_API_KEY` | Auto |
+| `anthropic` | `ANTHROPIC_API_KEY` | Auto |
+| `gemini` | `GEMINI_API_KEY` | Auto |
+| `ollama` | None | `http://localhost:11434` |
+| `openrouter` | `OPENROUTER_API_KEY` | Auto |
+| `deepseek` | `DEEPSEEK_API_KEY` | Auto |
+| `groq` | `GROQ_API_KEY` | Auto |
+| `together` | `TOGETHER_API_KEY` | Auto |
+| `mistral` | `MISTRAL_API_KEY` | Auto |
+| `opencode` | `OPENCODE_API_KEY` | Auto |
+| `azure` | `AZURE_*` | Required |
+| `custom` | `CUSTOM_*` | Required |
 
 ---
 
 ## 📋 CLI Reference
 
-| Flag | Description |
-|------|-------------|
-| `--topic TEXT` | Research topic (required) |
-| `--provider NAME` | Override provider from env |
-| `--model NAME` | Override model name from env |
-| `--stream` | Stream per-step progress with spinner |
-| `--max-revisions N` | Override MAX_REVISIONS |
-| `--no-plan-cache` | Ignore cached research plans (force refresh) |
-| `--thread-id TEXT` | Checkpoint thread id |
-| `--resume` | Resume from last checkpoint for thread |
-| `--print-config` | Print resolved model config and exit |
-| `--budget FLOAT` | Max USD budget; aborts if exceeded |
-| `--list-providers` | List supported providers |
+```bash
+python main.py [OPTIONS]
+
+--topic TEXT              Research topic (required)
+--provider NAME           Override provider
+--model NAME              Override model name
+--stream                  Stream progress to terminal
+--max-revisions N         Max revision attempts (default: 3)
+--no-plan-cache           Disable plan caching
+--thread-id TEXT          Checkpoint thread ID
+--resume                  Resume from checkpoint
+--budget FLOAT            Max cost in USD
+--list-providers          Show available providers
+--print-config            Print resolved config
+```
+
+**Examples:**
+
+```bash
+# Basic research
+python main.py --topic "Impact of quantum computing on cryptography"
+
+# With budget limit
+python main.py --topic "AI regulation in 2024" --budget 2.0
+
+# Resume interrupted run
+python main.py --topic "Previous topic" --thread-id abc123 --resume
+
+# Use specific model
+python main.py --topic "Topic" --provider openai --model gpt-4o-mini
+```
 
 ---
 
-## 🔄 Revision Loop Logic
+## 🌐 Web UI
 
-The critic evaluates the draft against four quality dimensions:
+Start the web interface:
 
-| Dimension | Max Score | Criteria |
-|-----------|-----------|----------|
-| Completeness | 30 | All plan sections covered? |
-| Factual Accuracy | 30 | Claims backed by sources? |
-| Tone & Readability | 20 | Clear, professional tone? |
-| Citation Quality | 20 | Proper `[n]` format, valid URLs? |
+```bash
+python webui.py
+# → Open http://localhost:5000
+```
 
-If `verdict == "REVISE"` and `revision_count < MAX_REVISIONS`, the graph routes back to **Writer**. Otherwise it terminates at `END`.
+**Features:**
+- Real-time SSE progress streaming
+- Provider & model selection dropdown
+- Manual input for topic & parameters
+- Live output panel with markdown rendering
+- Pause/Resume workflow control
+- Cost tracking dashboard
+
+---
+
+## 🐳 Docker
+
+### Quick Start
+
+```bash
+# Build and run
+docker-compose up -d
+
+# Access UI at http://localhost:5000
+# SearXNG search at http://localhost:8080
+```
+
+### Docker Compose Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `app` | 5000 | Main web interface |
+| `searxng` | 8080 | Search engine (optional) |
+
+### Environment File
+
+```bash
+# Required for Docker
+cp .env.example .env
+# Edit .env with your API keys
+
+docker-compose up -d
+```
 
 ---
 
 ## 📄 Output Format
 
-Reports are saved to `output/YYYY-MM-DD_<topic_slug>/` with:
-- `report.md` — Final Markdown with inline `[n]` citations
-- `sources.json` — All fetched URLs + snippets
-- `state.json` — Full workflow state snapshot
+Reports are saved to `output/YYYY-MM-DD_<topic_slug>/`:
+
+```
+output/
+└── 2024-08-27_how-rag-improves-search/
+    ├── report.md           # Final report with citations
+    ├── sources.json        # All fetched URLs & snippets
+    └── state.json          # Full workflow snapshot
+```
+
+**Report structure:**
+- Professional Markdown formatting
+- Inline `[n]` citations linked to sources
+- Structured sections from research plan
+- Cost summary at the end
 
 ---
 
 ## 🧪 Testing
 
 ```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test suite
 python tests/test_graph.py
 python tests/test_hitl.py
 python tests/test_validation.py
-python tests/test_cost.py
-python tests/test_registry.py
-```
-
-Or run all:
-```bash
-python -m pytest tests/ -v
 ```
 
 ---
 
-## 🔧 Troubleshooting
+## 📚 Prompt Templates
 
-| Problem | Fix |
-|---------|-----|
-| `Unsupported provider: xxx` | Check `MODEL_PROVIDER` in `.env`. See provider table above. |
-| `model parameter is required` | Set `MODEL_NAME` in `.env` (e.g. `MODEL_NAME=gpt-4o-mini`). |
-| `Rate limit / 429 errors` | Check provider quota. Switch provider or wait for reset. |
-| Agent loop stuck revising | Lower `APPROVE_THRESHOLD` or increase `MAX_REVISIONS`. |
-| Broken citations | Ensure `TAVILY_API_KEY` or `DDGS_ENABLED=true` is set for live search. |
-| `OPENCODE_API_KEY` not found | Set `OPENCODE_API_KEY=your-key` (or use a free-tier provider with no key). |
+Located in `prompts/` directory:
+
+| File | Purpose |
+|------|---------|
+| `planner.txt` | Research plan generation |
+| `researcher.txt` | Web search & fact gathering |
+| `writer.txt` | Draft composition |
+| `critic.txt` | Quality evaluation |
+| `image_gen.txt` | Visual content generation |
 
 ---
 
-## 📁 Project Structure
+## 🎨 Image Generation Prompts
 
-```text
-.
-├── agents/
-│   ├── common.py       # Shared types, last_usage tracking
-│   ├── critic.py       # Quality scoring + verdict
-│   ├── planner.py      # Research plan generation
-│   ├── researcher.py   # Live web search + fetch
-│   ├── writer.py       # Report writing + citation formatting
-│   ├── state.py        # WorkflowState TypedDict
-│   ├── schemas.py      # Pydantic models
-│   ├── search.py       # Search orchestration (Tavily → DDG → CSV)
-│   ├── searxng.py      # SearXNG search backend
-│   └── registry.py     # YAML-backed agent/provider registry
-├── graph.py            # LangGraph workflow definition
-├── main.py             # CLI entrypoint
-├── webui.py            # Flask web UI
-├── output.py           # Output formatting & file writing
-├── stream_events.py    # Stream consumption helpers
-├── cli_ui.py           # Terminal spinner / color output
-├── tools/
-│   ├── citation_check.py
-│   └── search_fallback.py
-├── models/
-│   └── llm.py          # Multi-provider LLM factory
-├── evaluation/         # Evaluation harness
-├── tests/              # Test suite
-├── ROADMAP.md          # Development roadmap
-├── PLAN.md             # Current sprint plan
-├── requirements.txt
-└── .env.example
+For creating visual assets:
+
+### Repository Banner (Hero Image)
+
 ```
+prompt: "A futuristic AI research assistant analyzing documents,
+        surrounded by floating data visualizations and search results,
+        clean tech aesthetic, blue and purple gradient, 
+        minimalist style, professional presentation"
+```
+
+### Architecture Diagram
+
+```
+prompt: "Flowchart showing AI agent pipeline: 
+        Planner → Researcher → Writer → Critic, 
+        circular feedback loop, modern tech illustration,
+        clean lines, flat design, light background"
+```
+
+### Feature Icons
+
+```
+prompt: "Set of 4 minimalist icons: 
+        1) Brain with search magnifying glass, 
+        2) Document with citation marks, 
+        3) Dollar sign with chart, 
+        4) Human hand approving checkmark, 
+        consistent style, blue theme, white background"
+```
+
+---
+
+## 🔒 Security
+
+- API keys stored in `.env` (never commit)
+- No hardcoded credentials
+- Cost tracking prevents bill shock
+- Checkpoint saves state safely
+
+---
+
+## 📈 Roadmap
+
+| Phase | Features | Status |
+|-------|----------|--------|
+| 0 | Core pipeline, multi-provider | ✅ Done |
+| 1 | Cost tracking, budget guard | ✅ Done |
+| 2 | Parallel research, citation quality | 🔄 In Progress |
+| 3 | Human review, scheduling | 📋 Planned |
+| 4 | Plugin system, extensibility | 📋 Planned |
+| 5 | Production deployment | 📋 Planned |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
-
-1. Fork the repo
-2. Create a feature branch (`git checkout -b feature/amazing-thing`)
-3. Commit changes (`git commit -am 'Add amazing thing'`)
-4. Push and open a Pull Request
-
----
-
-## 📜 License
-
-MIT — see [LICENSE](LICENSE) for details.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
-**Built with ❤️ for researchers and AI enthusiasts.**
+## 📄 License
+
+MIT License — See [LICENSE](LICENSE) for details.
+
+---
+
+## 🙏 Credits
+
+- [LangGraph](https://langchain-ai.github.io/langgraph/) — Agent orchestration
+- [DuckDuckGo](https://duckduckgo.com) — Free search fallback
+- [SearXNG](https://searxng.github.io/) — Self-hosted search engine
+- All LLM provider APIs
+
+---
+
+**Made with ❤️ by [thanhprty234](https://github.com/thanhprty234)**
