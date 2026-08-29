@@ -300,41 +300,6 @@ Located in `prompts/` directory:
 
 ---
 
-## 🎨 Image Generation Prompts
-
-For creating visual assets:
-
-### Repository Banner (Hero Image)
-
-```
-prompt: "A futuristic AI research assistant analyzing documents,
-        surrounded by floating data visualizations and search results,
-        clean tech aesthetic, blue and purple gradient, 
-        minimalist style, professional presentation"
-```
-
-### Architecture Diagram
-
-```
-prompt: "Flowchart showing AI agent pipeline: 
-        Planner → Researcher → Writer → Critic, 
-        circular feedback loop, modern tech illustration,
-        clean lines, flat design, light background"
-```
-
-### Feature Icons
-
-```
-prompt: "Set of 4 minimalist icons: 
-        1) Brain with search magnifying glass, 
-        2) Document with citation marks, 
-        3) Dollar sign with chart, 
-        4) Human hand approving checkmark, 
-        consistent style, blue theme, white background"
-```
-
----
-
 ## 🔒 Security
 
 - API keys stored in `.env` (never commit)
