@@ -57,9 +57,9 @@ nano .env  # or use your favorite editor
 **Minimal config:**
 ```env
 MODEL_PROVIDER=custom
-MODEL_NAME=agnes-2.5-flash
+MODEL_NAME=<your-model-name>
 CUSTOM_API_KEY=sk-your-key-here
-CUSTOM_BASE_URL=https://apihub.agnes-ai.com/v1
+CUSTOM_BASE_URL=https://api.example.com/v1
 ```
 
 ### 3. Run
@@ -148,7 +148,7 @@ Input Topic
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `MODEL_PROVIDER` | `custom` | LLM provider |
-| `MODEL_NAME` | `agnes-2.5-flash` | Model identifier |
+| `MODEL_NAME` | `<your-model>` | Model identifier |
 | `CUSTOM_API_KEY` | `sk-***` | API key for custom provider |
 | `CUSTOM_BASE_URL` | `https://api.example.com/v1` | API endpoint |
 | `TAVILY_API_KEY` | `tvly-***` | Tavily search (optional) |
@@ -304,42 +304,6 @@ Located in `prompts/` directory:
 | `researcher.txt` | Web search & fact gathering |
 | `writer.txt` | Draft composition |
 | `critic.txt` | Quality evaluation |
-| `image_gen.txt` | Visual content generation |
-
----
-
-## 🎨 Image Generation Prompts
-
-For creating visual assets:
-
-### Repository Banner (Hero Image)
-
-```
-prompt: "A futuristic AI research assistant analyzing documents,
-        surrounded by floating data visualizations and search results,
-        clean tech aesthetic, blue and purple gradient, 
-        minimalist style, professional presentation"
-```
-
-### Architecture Diagram
-
-```
-prompt: "Flowchart showing AI agent pipeline: 
-        Planner → Researcher → Writer → Critic, 
-        circular feedback loop, modern tech illustration,
-        clean lines, flat design, light background"
-```
-
-### Feature Icons
-
-```
-prompt: "Set of 4 minimalist icons: 
-        1) Brain with search magnifying glass, 
-        2) Document with citation marks, 
-        3) Dollar sign with chart, 
-        4) Human hand approving checkmark, 
-        consistent style, blue theme, white background"
-```
 
 ---
 
