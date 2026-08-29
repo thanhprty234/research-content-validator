@@ -1,0 +1,133 @@
+# Image Generation Prompts for Research & Content Validator
+
+## Repository Banner / Hero Image
+
+```
+prompt: "A futuristic AI research assistant analyzing floating holographic documents,
+        surrounded by data visualizations, search results, and neural network connections,
+        clean tech aesthetic, blue and purple gradient, minimalist style,
+        professional presentation, subtle glow effects, 16:9 aspect ratio"
+```
+
+---
+
+## Architecture Diagram
+
+```
+prompt: "Modern flowchart illustration showing AI agent pipeline:
+        Planner (brain icon) → Researcher (magnifying glass) → Writer (pen icon) → Critic (checkmark),
+        with circular feedback loop arrow, clean tech style,
+        flat design, light background, professional diagram"
+```
+
+---
+
+## Feature Icons (Set of 4)
+
+```
+prompt: "Set of 4 minimalist tech icons in consistent style:
+        1) Brain with search magnifying glass (planning/search)
+        2) Document with citation marks [1][2] (research)
+        3) Dollar sign with upward chart (cost tracking)
+        4) Human hand with checkmark (human-in-the-loop)
+        Blue color theme, white background, clean lines, modern flat design"
+```
+
+---
+
+## Web UI Screenshot Placeholder
+
+```
+prompt: "Clean web dashboard interface showing research workflow progress,
+        sidebar with provider selection dropdown, main panel with streaming text output,
+        cost tracker widget, dark mode compatible, professional SaaS aesthetic,
+        screenshot style, 4:3 aspect ratio"
+```
+
+---
+
+## Docker Deployment Visual
+
+```
+prompt: "Docker container illustration with Python logo, 
+        Flask web framework icon, and database cylinder,
+        connected by clean lines, cloud deployment background,
+        modern DevOps aesthetic, minimal style"
+```
+
+---
+
+## Citation Quality Visualization
+
+```
+prompt: "Infographic showing citation validation process:
+        Claim text → Source URL → Link check → Quality score badge,
+        green checkmarks for valid citations, red X for broken links,
+        clean educational style, light background, professional"
+```
+
+---
+
+## Agent Team Concept Art
+
+```
+prompt: "Four AI agents working collaboratively around a digital research table,
+        each agent represented as abstract glowing figure with distinct tool (pen, magnifier, brain, checklist),
+        futuristic lab setting, soft blue lighting, professional tech illustration"
+```
+
+---
+
+## Cost Tracking Dashboard
+
+```
+prompt: "Data visualization dashboard showing token usage costs,
+        real-time spending chart, budget progress bar,
+        clean financial analytics style, blue and green color palette,
+        modern SaaS metrics display"
+```
+
+---
+
+## Use Case: Academic Research
+
+```
+prompt: "University researcher using AI assistant to write academic paper,
+        multiple screens showing search results, citations, draft document,
+        modern office setting, professional atmosphere,
+        soft natural lighting, realistic illustration style"
+```
+
+---
+
+## Use Case: Content Creation
+
+```
+prompt: "Content creator workflow with AI research pipeline,
+        laptop showing web interface, smartphone with notifications,
+        coffee cup, organized desk, warm morning light,
+        lifestyle photography style, authentic moment"
+```
+
+---
+
+## Abstract Data Flow
+
+```
+prompt: "Abstract representation of data flowing through AI pipeline,
+        glowing particles moving from search nodes to analysis to output,
+        deep blue and purple gradients, ethereal digital aesthetic,
+        modern technology background, 16:9"
+```
+
+---
+
+## Logo Concept
+
+```
+prompt: "Minimalist logo for AI research tool,
+        combining magnifying glass and document elements,
+        circular badge design, gradient blue to purple,
+        clean geometric shapes, professional brand identity,
+        white background, vector style"
+```
