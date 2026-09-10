@@ -393,15 +393,3 @@ MIT License — See [LICENSE](LICENSE) for details.
 ---
 
 **Made with ❤️ by [thanhprty234](https://github.com/thanhprty234)**
-
----
-
-## 📊 Project Status
-
-| Metric | Value |
-|--------|-------|
-| **Score** | 90/100 |
-| **Tests** | 22/22 PASSED |
-| **Status** | PRODUCTION READY |
-| **Last Update** | 2026-09-10 |
-| **Commit** | `04b5028` |
