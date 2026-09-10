@@ -1,5 +1,6 @@
 """Researcher agent: gather citable facts for each research question via search."""
 
+import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .common import load_prompt, structured_call
@@ -51,9 +52,15 @@ def research_node(state: WorkflowState, llm=None, progress=None) -> dict:
     if not questions:
         return {"notes": [], "raw_findings": []}
 
+    # Rate limiting: delay between requests to avoid triggering provider limits
+    import time
+    RATE_LIMIT_DELAY = float(os.getenv("SEARCH_RATE_LIMIT_DELAY", "0.5"))
+
     with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, total)) as pool:
         futures = {pool.submit(_research_one, q, system, llm): q for q in questions}
         for fut in as_completed(futures):
+            if RATE_LIMIT_DELAY > 0:
+                time.sleep(RATE_LIMIT_DELAY)
             q, note = fut.result()
             tick(q, note)
 

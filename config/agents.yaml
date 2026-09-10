@@ -1,4 +1,7 @@
 # Phase 4.1 — Agent Registry
+# NOTE: Classes PlannerAgent, ResearcherAgent, WriterAgent, CriticAgent do not exist yet.
+# This YAML is reserved for future use when we migrate from functions to classes.
+# Current implementation uses direct function bindings in graph.py.
 agents:
   planner: { module: agents.planner, class: PlannerAgent }
   researcher: { module: agents.researcher, class: ResearcherAgent }

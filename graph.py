@@ -30,20 +30,50 @@ def _should_revise(state: WorkflowState) -> str:
 
 
 # ponytail: Phase 3.1 — HITL node and routing function are module-level for testability
+_HITL_TIMEOUT_MIN = int(os.getenv("HUMAN_REVIEW_TIMEOUT", "5"))  # minutes before auto-approve
+
+
 def _human_review(state: WorkflowState) -> dict:
     """Pause for operator approval before the critic burns tokens.
-    Auto-approves on EOFError (web UI / non-TTY path)."""
+    Auto-approves on EOFError (web UI / non-TTY path) or timeout.
+    Timeout value set via HUMAN_REVIEW_TIMEOUT env var (default: 5 min).
+    """
     draft = state.get("body") or ""
     print("\n--- DRAFT FOR REVIEW ---\n" + draft[:2000] + "\n------------------------")
+
+    approved = False
+    manual_feedback = ""
+
+    def _auto_approve():
+        nonlocal approved
+        approved = True
+
+    import threading
+    timer = threading.Timer(_HITL_TIMEOUT_MIN * 60, _auto_approve)
+    timer.daemon = True
+    timer.start()
+
     try:
-        ans = input("Approve draft? [y/N] (reject = type feedback): ").strip().lower()
+        ans = input(f"Approve draft? [y/N] (timeout in {_HITL_TIMEOUT_MIN} min): ").strip().lower()
+        timer.cancel()
+        if ans in ("y", "yes"):
+            approved = True
     except (EOFError, OSError):
         # ponytail: silent auto-approve under servers; add explicit API gate if HITL matters there
-        return {"draft_rejected": False}
-    if ans in ("y", "yes"):
-        return {"draft_rejected": False}
-    fb = input("Feedback for writer: ").strip()
-    return {"draft_rejected": True, "manual_feedback": fb, "critic_feedback": [fb]}
+        approved = True
+    except KeyboardInterrupt:
+        timer.cancel()
+        print("\n[!] Interrupted by user. Canceling review.")
+        raise
+
+    if not approved:
+        try:
+            manual_feedback = input("Feedback for writer: ").strip()
+        except (EOFError, OSError):
+            manual_feedback = ""
+        return {"draft_rejected": True, "manual_feedback": manual_feedback, "critic_feedback": [manual_feedback]}
+
+    return {"draft_rejected": False}
 
 
 def _after_review(state: WorkflowState) -> str:

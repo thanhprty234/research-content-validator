@@ -57,14 +57,13 @@ async def search_queries(query: str, max_results: int = 5) -> list:
     return []
 
 
-async def search_with_fallback(query: str, max_results: int = 5) -> list:
-    """Search with explicit fallback chain and logging."""
-    results = await search_queries(query, max_results=max_results)
-    if not results:
-        print(f"⚠️  No search results for: {query}")
-        return [{
-            "title": f"[Fallback] Context on: {query}",
-            "url": "",
-            "content": f"No external search results for '{query}'. Proceeding with internal knowledge.",
-        }]
-    return results
+def _fallback_search(query: str, max_results: int = 5) -> list:
+    """Return a single fallback entry when no search provider is available."""
+    return [{
+        "title": f"[Fallback] Context on: {query}",
+        "url": "",
+        "content": f"No external search results for '{query}'. Proceeding with internal knowledge.",
+    }]
+
+
+# Note: search_with_fallback was removed (dead code). Use search_queries_sync() instead.

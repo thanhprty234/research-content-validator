@@ -80,16 +80,28 @@ def _should_method_fallback(exc, remaining_methods) -> bool:
     return "response_format" in msg or "unavailable" in msg or "not supported" in msg
 
 
-# ponytail: per-call usage log
+# ponytail: per-call usage log — protected by lock to prevent race condition
+# when researcher runs parallel LLM calls
 _last_usage: dict | None = None
+_last_usage_lock = None  # imported lazily
+
+
+def _get_lock():
+    """Lazy import threading.Lock to avoid circular imports."""
+    global _last_usage_lock
+    if _last_usage_lock is None:
+        import threading
+        _last_usage_lock = threading.Lock()
+    return _last_usage_lock
 
 
 
 def last_usage() -> dict:
     """Return and clear the most recent LLM usage metadata."""
     global _last_usage
-    result = _last_usage or {}
-    _last_usage = None
+    with _get_lock():
+        result = _last_usage or {}
+        _last_usage = None
     return result
 
 
@@ -129,7 +141,8 @@ def structured_call(llm, schema: type[BaseModel], system: str, user: str, max_to
             try:
                 result = _invoke_structured(llm, schema, system, user, max_tokens, method)
                 global _last_usage
-                _last_usage = getattr(result, "usage_metadata", None) or {}
+                with _get_lock():
+                    _last_usage = getattr(result, "usage_metadata", None) or {}
                 return result
             except Exception as exc:
                 last_error = exc

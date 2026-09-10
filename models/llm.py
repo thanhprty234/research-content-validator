@@ -176,7 +176,9 @@ def get_model(cfg: Optional[ModelConfig] = None):
     raise ValueError(f"Unsupported provider: {cfg.provider}")
 
 
-# ponytail: flat rate table — add providers as needed; uses best-known public price for approximation
+# Cost rates (updated: Sep 2024 — verify before production use, prices change frequently)
+# Source: https://openai.com/pricing, https://docs.anthropic.com/en/docs/about-claude/models
+# Returns 0.0 for unknown models/providers (safe default — won't crash, but flag manually)
 _COST_PER_M_TOKEN = {
     "openai":  {"gpt-4o-mini":    (0.150, 0.600), "gpt-4o":       (2.50, 10.00), "o1-mini":      (1.10, 4.40)},
     "anthropic":{"claude-3-5-sonnet": (3.00, 15.00), "claude-3-haiku":   (0.25, 1.25), "claude-3-opus":    (15.00, 75.00)},

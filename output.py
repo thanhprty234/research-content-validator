@@ -27,6 +27,10 @@ def write_outputs(state: dict) -> Path:
     report, critique = _best_or_current(state)
     title = report.get("title") or "Report"
     slug = "".join(c for c in title if c.isalnum() or c in " _-").strip().replace(" ", "_") or "report"
+    # Remove Windows-invalid characters: \ / : * ? " < > |
+    for ch in r"\/*?:<>|":
+        slug = slug.replace(ch, "_")
+    slug = slug.strip("_") or "report"
     out_dir = OUTPUT_DIR / f"{datetime.now():%Y%m%d_%H%M%S}_{slug}"
     out_dir.mkdir(parents=True, exist_ok=True)
 

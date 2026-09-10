@@ -4,8 +4,10 @@ Lets the planner skip an LLM call when the same topic was researched before,
 which also stabilizes the research questions and improves search-cache hits.
 
 Cache is disabled by setting ``PLAN_CACHE=0`` in the environment.
+Plans older than 30 days are automatically pruned.
 """
 
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -14,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 _CACHE_NAME = "plan_cache.sqlite"
+_CACHE_TTL_DAYS = 30  # plans older than this are considered stale
 _cache_dir = Path(__file__).resolve().parent.parent / "output"
 
 
@@ -53,8 +56,7 @@ def get_plan(topic: str) -> Optional[dict]:
 
 
 def set_plan(topic: str, questions: list, outline: list) -> None:
-    from datetime import datetime, timezone
-
+    now = datetime.now(timezone.utc).isoformat()
     con = _conn()
     con.execute(
         "INSERT OR REPLACE INTO plans (topic_hash, topic, questions, outline, created_at) VALUES (?,?,?,?,?)",
@@ -63,8 +65,12 @@ def set_plan(topic: str, questions: list, outline: list) -> None:
             topic,
             json.dumps(questions, ensure_ascii=False),
             json.dumps(outline, ensure_ascii=False),
-            datetime.now(timezone.utc).isoformat(),
+            now,
         ),
     )
+    con.commit()
+    # Prune stale entries
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=_CACHE_TTL_DAYS)).isoformat()
+    con.execute("DELETE FROM plans WHERE created_at < ?", (cutoff,))
     con.commit()
     con.close()
